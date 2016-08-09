@@ -10,7 +10,10 @@ install:
   - go get -v github.com/onsi/gomega
   - go get -v -t ./...
   - export PATH=$PATH:$HOME/gopath/bin
-script: ginkgo -r --randomizeAllSpecs --randomizeSuites --failOnPending --cover --trace --race --compilers=2
+script:
+  ginkgo -r --randomizeAllSpecs --randomizeSuites --failOnPending --cover --trace --race --compilers=2
+after_success:
+  - cat *.coverprofile > *.txt && bash <(curl -s https://codecov.io/bash)
 notifications:
   email:
     on_success: change
