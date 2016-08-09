@@ -1,5 +1,5 @@
-# lmq
-An embed queue,  like Kafka.
+lmq
+======
 
 [![GoDoc][1]][2] [![Build Status][3]][4] [![Go Report Card][5]][6] [![Coverage Statusd][7]][8]
 
@@ -11,3 +11,5 @@ An embed queue,  like Kafka.
 [6]: https://goreportcard.com/report/zwb-ict/lmq
 [7]: https://codecov.io/gh/zwb-ict/lmq/branch/master/graph/badge.svg
 [8]: https://codecov.io/gh/zwb-ict/lmq
+
+An embed queue,  like Kafka.
