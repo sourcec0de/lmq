@@ -1,12 +1,17 @@
 language: go
 go:
-- '1.6.3'
-- 'tip'
+- 1.6.3
+- tip
 env:
   global:
-    - GOARCH=amd64
-script:
-  ginkgo -r --randomizeAllSpecs --randomizeSuites --failOnPending --cover --trace --race --compilers=2
+  - GOARCH=amd64
+script: ginkgo -r --randomizeAllSpecs --randomizeSuites --failOnPending --cover --trace --race --compilers=2
+notifications:
+  email:
+    on_success: change
+    on_failure: always
+  slack:
+    secure: FMBYSeDyCmfAftpc3bd2WgEU0whnOEVRuSulEYVGuNv3zVcT1D0v4u5124YtQKBrsfIDchn1dcSHem7KZ58PgllAd2g8mYu2WEW2B4NqM15w3WkoL47ULWK9313fmDsRkGJsTeyuZC0CF/ez5XCRYe+33o3F2rgIcsO+jEpCys58tv3a1StZL5zKUvbcSx6EYFBtk7TXiomVLjg20rHyRTWEK4R+krs4b6pPclDCnRiCpX+Rv/6r0LxBHOJy/BSmP+twT7WuwgeVsbp0gGlh9YmK+dn11OZt8xawr45ZgSr8RR+E5VXtH569I66nfspihZVPtLReckgM3UeJ8MhOyP/b6ybTw9vMkQtCKe3+g9e8SQhE9tTAixQIc/kEd8fFonBC2aVAAQadzgUrwIeut1hEXmJxAqKoFNI1yY3iEuJXAVgSc2ouaWj+CRR1ze9GxA2XytPgh2MpLthCLEy+El399rXBH2Ho13//AtQhlDtpt1cvQA+vpqE3S7aJyG/mlSINnEsTQ3Yd4PsQzF2G6mawoR6byQuTnYvcdk8ji8ehMyKFBYcKpdaK38p1ZI325mv6UvlTlc5mjMW71k0xfVl7xheYF8QKEeenAITl/Hx5F3NeCyBC5aVx3xr3PAi6baYJ6dye2JPOUZ810cKxDViXC85/MXK2/XGybow6C6E=
 matrix:
   allow_failures:
-    - go: tip
+  - go: tip
