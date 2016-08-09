@@ -15,7 +15,15 @@ type PingPongBuffer struct {
 }
 
 func NewPingPongBuffer(size int, flushInterval time.Duration, handler func(msgs []*Message)) *PingPongBuffer {
-
+	ppb := &PingPongBuffer{
+		cache0:         make([]*Message, size),
+		cache1:         make([]*Message, size),
+		flushThreshold: size,
+		flushInterval:  flushInterval,
+		handler:        handler,
+	}
+	ppb.currentCache = &ppb.cache0
+	return ppb
 }
 
 func (ppb *PingPongBuffer) Put(msg *Message) {
