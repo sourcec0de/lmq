@@ -4,6 +4,7 @@ import "sync"
 
 type Queue interface {
 	Open(opt *Options) error
+	Option() *Options
 	LoadTopicMeta(topic string) error
 	PutMessage(msg *Message, topic string)
 	Close() error
@@ -25,9 +26,9 @@ type queue struct {
 	backendStorage BackendStorage
 }
 
-func NewQueue(path string, opt *Options) (Queue, error) {
+func NewQueue(opt *Options) (Queue, error) {
 	queueManager.RLock()
-	q, ok := queueManager.queueMap[path]
+	q, ok := queueManager.queueMap[opt.DataPath]
 	queueManager.RUnlock()
 	if ok {
 		return q, nil
@@ -35,7 +36,7 @@ func NewQueue(path string, opt *Options) (Queue, error) {
 
 	queueManager.Lock()
 
-	q, ok = queueManager.queueMap[path]
+	q, ok = queueManager.queueMap[opt.DataPath]
 	if ok {
 		queueManager.Unlock()
 		return q, nil
@@ -50,15 +51,15 @@ func NewQueue(path string, opt *Options) (Queue, error) {
 	var err error
 	switch opt.BackendStorage {
 	case "Bolt":
-		backendStorage, err = NewBoltBackendStorage(path, opt)
+		backendStorage, err = NewBoltBackendStorage(opt.DataPath, opt)
 	case "Lmdb":
-		backendStorage, err = NewLmdbBackendStorage(path, opt)
+		backendStorage, err = NewLmdbBackendStorage(opt.DataPath, opt)
 	}
 	if err != nil {
 		return nil, err
 	}
 	q.(*queue).backendStorage = backendStorage
-	queueManager.queueMap[path] = q
+	queueManager.queueMap[opt.DataPath] = q
 	queueManager.Unlock()
 
 	return q, nil
