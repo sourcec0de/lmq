@@ -63,3 +63,15 @@ func NewQueue(path string, conf *Config) (Queue, error) {
 
 	return q, nil
 }
+
+func (q *queue) LoadTopicMeta(topic string) error {
+
+}
+
+func (q *queue) PutMessage(msg *Message, topic string) {
+
+}
+
+func (q *queue) Close() error {
+
+}
