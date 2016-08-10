@@ -42,7 +42,7 @@ func NewQueue(path string, opt *Options) (Queue, error) {
 	}
 
 	q = &queue{
-		conf:     conf,
+		opt:      opt,
 		topicMap: make(map[string]Topic),
 	}
 
@@ -57,15 +57,19 @@ func NewQueue(path string, opt *Options) (Queue, error) {
 	if err != nil {
 		return nil, err
 	}
-	q.backendStorage = backendStorage
+	q.(*queue).backendStorage = backendStorage
 	queueManager.queueMap[path] = q
 	queueManager.Unlock()
 
 	return q, nil
 }
 
-func (q *queue) LoadTopicMeta(topic string) error {
+func (q *queue) Open(opt *Options) error {
+	return nil
+}
 
+func (q *queue) LoadTopicMeta(topic string) error {
+	return nil
 }
 
 func (q *queue) PutMessage(msg *Message, topic string) {
@@ -73,5 +77,5 @@ func (q *queue) PutMessage(msg *Message, topic string) {
 }
 
 func (q *queue) Close() error {
-
+	return nil
 }
