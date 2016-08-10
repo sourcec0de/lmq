@@ -69,6 +69,10 @@ func (q *queue) Open(opt *Options) error {
 	return nil
 }
 
+func (q *queue) Option() *Options {
+	return q.opt
+}
+
 func (q *queue) LoadTopicMeta(topic string) error {
 	return nil
 }
