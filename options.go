@@ -13,7 +13,8 @@ type TopicOption struct {
 }
 
 type Options struct {
-	DataPath string
+	DataPath      string
+	MaxTopicCount int
 
 	Topics []TopicOption
 
