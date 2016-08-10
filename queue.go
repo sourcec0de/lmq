@@ -3,7 +3,7 @@ package lmq
 import "sync"
 
 type Queue interface {
-	Open(conf *Config) error
+	Open(opt *Options) error
 	LoadTopicMeta(topic string) error
 	PutMessage(msg *Message, topic string)
 	Close() error
@@ -17,7 +17,7 @@ var (
 )
 
 type queue struct {
-	conf *Config
+	opt *Options
 
 	sync.RWMutex
 	topicMap map[string]Topic
@@ -25,7 +25,7 @@ type queue struct {
 	backendStorage BackendStorage
 }
 
-func NewQueue(path string, conf *Config) (Queue, error) {
+func NewQueue(path string, opt *Options) (Queue, error) {
 	queueManager.RLock()
 	q, ok := queueManager.queueMap[path]
 	queueManager.RUnlock()

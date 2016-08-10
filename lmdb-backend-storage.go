@@ -3,7 +3,7 @@ package lmq
 type LmdbBackendStorage struct {
 }
 
-func NewLmdbBackendStorage(path string, conf *Config) (BackendStorage, error) {
+func NewLmdbBackendStorage(path string, opt *Options) (BackendStorage, error) {
 	return nil, nil
 }
 

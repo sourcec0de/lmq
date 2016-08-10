@@ -16,10 +16,10 @@ type AsyncProducer interface {
 
 type asyncProducer struct {
 	queue Queue
-	conf  *Config
+	opt   *Options
 	input chan *ProducerMessage
 }
 
-func NewAsyncProducer(queuePath string, conf *Config) (AsyncProducer, error) {
+func NewAsyncProducer(queuePath string, opt *Options) (AsyncProducer, error) {
 	return nil, nil
 }
