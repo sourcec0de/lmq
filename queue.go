@@ -48,11 +48,11 @@ func NewQueue(path string, opt *Options) (Queue, error) {
 
 	var backendStorage BackendStorage
 	var err error
-	switch {
+	switch opt.BackendStorage {
 	case "Bolt":
-		backendStorage, err = NewBoltBackendStorage(path, conf)
+		backendStorage, err = NewBoltBackendStorage(path, opt)
 	case "Lmdb":
-		backendStorage, err = NewLmdbBackendStorage(path, conf)
+		backendStorage, err = NewLmdbBackendStorage(path, opt)
 	}
 	if err != nil {
 		return nil, err
