@@ -51,9 +51,9 @@ func NewQueue(opt *Options) (Queue, error) {
 	var err error
 	switch opt.BackendStorage {
 	case "Bolt":
-		backendStorage, err = NewBoltBackendStorage(opt.DataPath, opt)
+		backendStorage, err = NewBoltBackendStorage(opt)
 	case "Lmdb":
-		backendStorage, err = NewLmdbBackendStorage(opt.DataPath, opt)
+		backendStorage, err = NewLmdbBackendStorage(opt)
 	}
 	if err != nil {
 		return nil, err

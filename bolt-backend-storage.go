@@ -3,7 +3,7 @@ package lmq
 type BoltBackendStorage struct {
 }
 
-func NewBoltBackendStorage(path string, opt *Options) (BackendStorage, error) {
+func NewBoltBackendStorage(opt *Options) (BackendStorage, error) {
 	return nil, nil
 }
 
