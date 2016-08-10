@@ -13,3 +13,13 @@ type AsyncProducer interface {
 	Close()
 	Input() chan<- *ProducerMessage
 }
+
+type asyncProducer struct {
+	queue Queue
+	conf  *Config
+	input chan *ProducerMessage
+}
+
+func NewAsyncProducer(queuePath string, conf *Config) (AsyncProducer, error) {
+	return nil, nil
+}
