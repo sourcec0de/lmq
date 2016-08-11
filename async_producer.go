@@ -129,4 +129,5 @@ func (tp *topicProducer) putMessage() {
 		}
 	}
 exit:
+	close(tp.input)
 }
