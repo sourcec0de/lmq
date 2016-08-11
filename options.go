@@ -16,7 +16,7 @@ type Options struct {
 	DataPath      string
 	MaxTopicCount int
 
-	Topics []TopicOption
+	Topics map[string]TopicOption
 
 	BackendStorage string
 }
