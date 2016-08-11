@@ -19,6 +19,9 @@ type AsyncProducer interface {
 	// it may otherwise leak memory. You must call this before calling Close on the
 	// underlying client.
 	Close()
+
+	// Input is the input channel for the user to write messages to that they
+	// wish to send.
 	Input() chan<- *ProducerMessage
 }
 
