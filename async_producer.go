@@ -75,7 +75,7 @@ exit:
 }
 
 func (p *asyncProducer) AsyncClose() {
-
+	p.waitGroup.Wrap(func() { p.shutdown() })
 }
 
 func (p *asyncProducer) Close() {
@@ -116,6 +116,7 @@ func (tp *topicProducer) loadTopicMeta() {
 func (p *asyncProducer) shutdown() {
 	close(p.input)
 	close(p.exitChan)
+	p.waitGroup.Wait()
 }
 
 func (tp *topicProducer) putMessage() {
