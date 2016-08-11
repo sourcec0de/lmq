@@ -8,6 +8,10 @@ type ProducerMessage struct {
 	Timestamp time.Time
 }
 
+// AsyncProducer publishes messages using a non-blocking API.
+// You must call Close() on a producer to avoid leaks:
+// it will not be garbage-collected automatically when it
+// passes out of scope.
 type AsyncProducer interface {
 	Close()
 	Input() chan<- *ProducerMessage
