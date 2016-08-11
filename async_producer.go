@@ -35,6 +35,7 @@ type asyncProducer struct {
 	waitGroup WaitGroupWrapper
 }
 
+// NewAsyncProducer creates a new AsyncProducer using the given option.
 func NewAsyncProducer(opt *Options) (AsyncProducer, error) {
 	queue, err := NewQueue(opt)
 	if err != nil {
@@ -49,6 +50,8 @@ func NewAsyncProducer(opt *Options) (AsyncProducer, error) {
 	return p, nil
 }
 
+// NewAsyncProducerWithQueue creates a new Producer using the given client. It is still
+// necessary to call Close() on the underlying client when shutting down this producer.
 func NewAsyncProducerWithQueue(queue Queue) (AsyncProducer, error) {
 	p := &asyncProducer{
 		queue:    queue,
