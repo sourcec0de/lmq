@@ -52,7 +52,26 @@ func NewAsyncProducerWithQueue(queue Queue) (AsyncProducer, error) {
 }
 
 func (p *asyncProducer) dispatch() {
+	handlers := make(map[string]chan<- *ProducerMessage)
 
+	for {
+		select {
+		case pMsg := <-p.input:
+			handler := handlers[pMsg.Topic]
+			if handler == nil {
+				handler = p.newTopicProducer(pMsg.Topic)
+				handlers[pMsg.Topic] = handler
+			}
+			handler <- pMsg
+		case <-p.exitChan:
+			goto exit
+		}
+	}
+
+exit:
+	for _, handler := range handlers {
+		close(handler)
+	}
 }
 
 func (p *asyncProducer) AsyncClose() {
