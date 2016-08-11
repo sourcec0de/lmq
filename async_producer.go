@@ -13,6 +13,11 @@ type ProducerMessage struct {
 // it will not be garbage-collected automatically when it
 // passes out of scope.
 type AsyncProducer interface {
+
+	// Close shuts down the producer and flushes any messages it may have buffered.
+	// You must call this function before a producer object passes out of scope, as
+	// it may otherwise leak memory. You must call this before calling Close on the
+	// underlying client.
 	Close()
 	Input() chan<- *ProducerMessage
 }
