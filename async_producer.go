@@ -2,6 +2,7 @@ package lmq
 
 import "time"
 
+// ProducerMessage is the collection of elements passed to the Producer in order to send a message.
 type ProducerMessage struct {
 	Topic     string
 	Body      []byte
