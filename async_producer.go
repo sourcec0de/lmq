@@ -91,3 +91,37 @@ type topicProducer struct {
 	topic  string
 	input  <-chan *ProducerMessage
 }
+
+func (p *asyncProducer) newTopicProducer(topic string) chan<- *ProducerMessage {
+	input := make(chan *ProducerMessage, p.opt.Topics[topic].BufferSize)
+
+	tp := &topicProducer{
+		parent: p,
+		topic:  topic,
+		input:  input,
+	}
+	tp.loadTopicMeta()
+	p.waitGroup.Wrap(func() { tp.putMessage() })
+
+	return input
+}
+
+func (tp *topicProducer) loadTopicMeta() {
+	err := tp.parent.queue.LoadTopicMeta(tp.topic)
+	if err != nil {
+		tp.parent.exitChan <- 1
+	}
+}
+
+func (tp *topicProducer) putMessage() {
+	for {
+		select {
+		case pMsg := <-tp.input:
+			msg := NewMessage(pMsg.Body)
+			tp.parent.queue.PutMessage(msg, tp.topic)
+		case <-tp.parent.exitChan:
+			goto exit
+		}
+	}
+exit:
+}
