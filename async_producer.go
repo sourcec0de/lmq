@@ -9,7 +9,6 @@ type ProducerMessage struct {
 }
 
 type AsyncProducer interface {
-	AsyncClose()
 	Close()
 	Input() chan<- *ProducerMessage
 }
@@ -74,12 +73,8 @@ exit:
 	}
 }
 
-func (p *asyncProducer) AsyncClose() {
-	p.waitGroup.Wrap(func() { p.shutdown() })
-}
-
 func (p *asyncProducer) Close() {
-
+	p.shutdown()
 }
 
 func (p *asyncProducer) Input() chan<- *ProducerMessage {
