@@ -85,3 +85,9 @@ func (p *asyncProducer) Close() {
 func (p *asyncProducer) Input() chan<- *ProducerMessage {
 	return p.input
 }
+
+type topicProducer struct {
+	parent *asyncProducer
+	topic  string
+	input  <-chan *ProducerMessage
+}
