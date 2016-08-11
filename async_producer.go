@@ -109,8 +109,13 @@ func (p *asyncProducer) newTopicProducer(topic string) chan<- *ProducerMessage {
 func (tp *topicProducer) loadTopicMeta() {
 	err := tp.parent.queue.LoadTopicMeta(tp.topic)
 	if err != nil {
-		tp.parent.exitChan <- 1
+		tp.parent.shutdown()
 	}
+}
+
+func (p *asyncProducer) shutdown() {
+	close(p.input)
+	close(p.exitChan)
 }
 
 func (tp *topicProducer) putMessage() {
