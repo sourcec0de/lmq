@@ -101,6 +101,7 @@ type topicProducer struct {
 	parent *asyncProducer
 	topic  string
 	input  <-chan *ProducerMessage
+	ppb    PingPongBuffer
 }
 
 func (p *asyncProducer) newTopicProducer(topic string) chan<- *ProducerMessage {
@@ -135,7 +136,7 @@ func (tp *topicProducer) putMessage() {
 		select {
 		case pMsg := <-tp.input:
 			msg := NewMessage(pMsg.Body)
-			tp.parent.queue.PutMessage(msg, tp.topic)
+			tp.ppb.Put(msg)
 		case <-tp.parent.exitChan:
 			goto exit
 		}
