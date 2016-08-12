@@ -8,7 +8,7 @@ type TopicOption struct {
 	MaxBytesPerFile string
 	MaxDataFiles    uint64
 
-	BufferSize          uint64
+	BufferSize          int
 	BufferFlushInterval time.Duration
 }
 
