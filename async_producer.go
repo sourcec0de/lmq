@@ -106,15 +106,24 @@ type topicProducer struct {
 
 func (p *asyncProducer) newTopicProducer(topic string) chan<- *ProducerMessage {
 	topicOption := p.opt.Topics[topic]
-	input := make(chan *ProducerMessage, topicOption.BufferSize)
+	bufferSize := topicOption.BufferSize
+	bufferFlushInterval := topicOption.BufferFlushInterval
+
+	input := make(chan *ProducerMessage, bufferSize)
+	handler := func(msgs []*Message) {
+		p.queue.PutMessages(topic, msgs)
+	}
 
 	tp := &topicProducer{
 		parent: p,
 		topic:  topic,
 		input:  input,
-		ppb:    NewPingPongBuffer(topicOption.BufferSize, topicOption.BufferFlushInterval, p.queue.PutMessages),
+		ppb:    NewPingPongBuffer(p.exitChan, bufferSize, bufferFlushInterval, handler),
 	}
+
 	tp.loadTopicMeta()
+
+	p.waitGroup.Wrap(func() { tp.ppb.Flush() })
 	p.waitGroup.Wrap(func() { tp.putMessage() })
 
 	return input
