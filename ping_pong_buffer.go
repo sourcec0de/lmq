@@ -7,18 +7,19 @@ type PingPongBuffer struct {
 	cache1       []*Message
 	currentCache *[]*Message
 
-	flushThreshold int
+	flushThreshold uint64
 	bgFlush        chan bool
 	flushInterval  time.Duration
 
-	handler func(msgs []*Message)
+	handler func(topic string, msgs []*Message)
 }
 
-func NewPingPongBuffer(size int, flushInterval time.Duration, handler func(msgs []*Message)) *PingPongBuffer {
+func NewPingPongBuffer(size uint64, flushInterval time.Duration, handler func(topic string, msgs []*Message)) *PingPongBuffer {
 	ppb := &PingPongBuffer{
 		cache0:         make([]*Message, size),
 		cache1:         make([]*Message, size),
 		flushThreshold: size,
+		bgFlush:        make(chan bool),
 		flushInterval:  flushInterval,
 		handler:        handler,
 	}
