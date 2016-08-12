@@ -8,9 +8,12 @@ import (
 )
 
 type LmdbBackendStorage struct {
-	env       *lmdb.Env
-	exitChan  chan int
-	waitGroup WaitGroupWrapper
+	env             *lmdb.Env
+	ownerMetaDB     lmdb.DBI
+	partitionMetaDB lmdb.DBI
+	opt             *Options
+	exitChan        chan int
+	waitGroup       WaitGroupWrapper
 }
 
 func NewLmdbBackendStorage(opt *Options) (BackendStorage, error) {
@@ -38,8 +41,33 @@ func NewLmdbBackendStorage(opt *Options) (BackendStorage, error) {
 	return lbs, nil
 }
 
-func (lbs *LmdbBackendStorage) InitTopicMeta(topic string) {
-
+func (lbs *LmdbBackendStorage) LoadTopicMeta(topic string) error {
+	return lbs.env.Update(func(txn *lmdb.Txn) error {
+		ownerMetaDBName := fmt.Sprintf("%s-%s", topic, "ownerMeta")
+		ownerMetaDB, err := txn.CreateDBI(ownerMetaDBName)
+		if err != nil {
+			return err
+		}
+		lbs.ownerMetaDB = ownerMetaDB
+		initOffset := uInt64ToBytes(0)
+		err = txn.Put(ownerMetaDB, []byte("producer_head"), initOffset, lmdb.NoOverwrite)
+		if err != nil {
+			if err, ok := err.(*lmdb.OpError); ok {
+				if err.Errno == lmdb.KeyExist {
+					return nil
+				}
+				return err
+			}
+		}
+		partitionMetaDBName := fmt.Sprintf("%s-%s", topic, "partitionMeta")
+		partitionMetaDB, err := txn.CreateDBI(partitionMetaDBName)
+		if err != nil {
+			return err
+		}
+		lbs.partitionMetaDB = partitionMetaDB
+		initPartitionID := initOffset
+		return txn.Put(lbs.partitionMetaDB, initPartitionID, initOffset, lmdb.NoOverwrite)
+	})
 }
 
 func (lbs *LmdbBackendStorage) InitPartitionMeta(topic, partition string) {
