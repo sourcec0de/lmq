@@ -70,10 +70,6 @@ func (lbs *LmdbBackendStorage) LoadTopicMeta(topic string) error {
 	})
 }
 
-func (lbs *LmdbBackendStorage) InitPartitionMeta(topic, partition string) {
-
-}
-
 func (lbs *LmdbBackendStorage) PersistMessages(topic string, msgs []*Message) {
 
 }

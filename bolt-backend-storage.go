@@ -7,11 +7,7 @@ func NewBoltBackendStorage(opt *Options) (BackendStorage, error) {
 	return nil, nil
 }
 
-func (bbs *BoltBackendStorage) InitTopicMeta(topic string) {
-
-}
-
-func (bbs *BoltBackendStorage) InitPartitionMeta(topic, partition string) {
+func (bbs *BoltBackendStorage) LoadTopicMeta(topic string) {
 
 }
 
