@@ -2,18 +2,63 @@ package lmq
 
 import (
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/bmatsuo/lmdb-go/lmdb"
 )
 
-type LmdbBackendStorage struct {
-	env             *lmdb.Env
+type topic struct {
+	opt TopicOption
+
 	ownerMetaDB     lmdb.DBI
 	partitionMetaDB lmdb.DBI
-	opt             *Options
-	exitChan        chan int
-	waitGroup       WaitGroupWrapper
+}
+
+func newTopic(name string, opt *Options) *topic {
+	return &topic{
+		opt:             opt.Topics[name],
+		ownerMetaDB:     0,
+		partitionMetaDB: 0,
+	}
+}
+
+func (t *topic) loadMeta(txn *lmdb.Txn) error {
+	ownerMetaDBName := fmt.Sprintf("%s-%s", t.opt.Name, "ownerMeta")
+	ownerMetaDB, err := txn.CreateDBI(ownerMetaDBName)
+	if err != nil {
+		return err
+	}
+	t.ownerMetaDB = ownerMetaDB
+	initOffset := uInt64ToBytes(0)
+	err = txn.Put(ownerMetaDB, []byte("producer_head"), initOffset, lmdb.NoOverwrite)
+	if err != nil {
+		if err, ok := err.(*lmdb.OpError); ok {
+			if err.Errno == lmdb.KeyExist {
+				return nil
+			}
+			return err
+		}
+	}
+	partitionMetaDBName := fmt.Sprintf("%s-%s", t.opt.Name, "partitionMeta")
+	partitionMetaDB, err := txn.CreateDBI(partitionMetaDBName)
+	if err != nil {
+		return err
+	}
+	t.partitionMetaDB = partitionMetaDB
+	initPartitionID := initOffset
+	return txn.Put(t.partitionMetaDB, initPartitionID, initOffset, lmdb.NoOverwrite)
+}
+
+type LmdbBackendStorage struct {
+	env   *lmdb.Env
+	topic map[string]*topic
+	sync.RWMutex
+
+	opt *Options
+
+	exitChan  chan int
+	waitGroup WaitGroupWrapper
 }
 
 func NewLmdbBackendStorage(opt *Options) (BackendStorage, error) {
@@ -42,32 +87,28 @@ func NewLmdbBackendStorage(opt *Options) (BackendStorage, error) {
 }
 
 func (lbs *LmdbBackendStorage) LoadTopicMeta(topic string) error {
-	return lbs.env.Update(func(txn *lmdb.Txn) error {
-		ownerMetaDBName := fmt.Sprintf("%s-%s", topic, "ownerMeta")
-		ownerMetaDB, err := txn.CreateDBI(ownerMetaDBName)
-		if err != nil {
-			return err
-		}
-		lbs.ownerMetaDB = ownerMetaDB
-		initOffset := uInt64ToBytes(0)
-		err = txn.Put(ownerMetaDB, []byte("producer_head"), initOffset, lmdb.NoOverwrite)
-		if err != nil {
-			if err, ok := err.(*lmdb.OpError); ok {
-				if err.Errno == lmdb.KeyExist {
-					return nil
-				}
-				return err
-			}
-		}
-		partitionMetaDBName := fmt.Sprintf("%s-%s", topic, "partitionMeta")
-		partitionMetaDB, err := txn.CreateDBI(partitionMetaDBName)
-		if err != nil {
-			return err
-		}
-		lbs.partitionMetaDB = partitionMetaDB
-		initPartitionID := initOffset
-		return txn.Put(lbs.partitionMetaDB, initPartitionID, initOffset, lmdb.NoOverwrite)
+	lbs.RLock()
+	_, ok := lbs.topic[topic]
+	lbs.RUnlock()
+	if ok {
+		return nil
+	}
+
+	lbs.Lock()
+
+	_, ok = lbs.topic[topic]
+	if ok {
+		return nil
+	}
+
+	t := newTopic(topic, lbs.opt)
+	err := lbs.env.Update(func(txn *lmdb.Txn) error {
+		return t.loadMeta(txn)
 	})
+	lbs.topic[topic] = t
+	lbs.Unlock()
+
+	return err
 }
 
 func (lbs *LmdbBackendStorage) PersistMessages(topic string, msgs []*Message) {

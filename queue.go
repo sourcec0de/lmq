@@ -5,9 +5,8 @@ import "sync"
 type Queue interface {
 	Open(opt *Options) error
 	Option() *Options
-	BackendStorage() BackendStorage
 	LoadTopicMeta(topic string) error
-	PutMessage(msg *Message, topic string)
+	PutMessage(topic string, msg *[]Message)
 	Close() error
 }
 
@@ -19,11 +18,7 @@ var (
 )
 
 type queue struct {
-	opt *Options
-
-	sync.RWMutex
-	topicMap map[string]Topic
-
+	opt            *Options
 	backendStorage BackendStorage
 }
 
@@ -44,8 +39,7 @@ func NewQueue(opt *Options) (Queue, error) {
 	}
 
 	q = &queue{
-		opt:      opt,
-		topicMap: make(map[string]Topic),
+		opt: opt,
 	}
 
 	var backendStorage BackendStorage
@@ -75,38 +69,13 @@ func (q *queue) Option() *Options {
 }
 
 func (q *queue) LoadTopicMeta(topic string) error {
-	q.RLock()
-	_, ok := q.topicMap[topic]
-	q.Unlock()
-	if ok {
-		return nil
-	}
-
-	q.Lock()
-
-	_, ok = q.topicMap[topic]
-	if ok {
-		return nil
-	}
-
-	t := NewTopic(topic, q)
-	err := t.LoadTopicMeta()
-	if err != nil {
-		return err
-	}
-	q.topicMap[topic] = t
-	q.Unlock()
-	return nil
+	return q.backendStorage.LoadTopicMeta(topic)
 }
 
-func (q *queue) PutMessage(msg *Message, topic string) {
-
+func (q *queue) PutMessage(topic string, msg *[]Message) {
+	q.backendStorage.PutMessages(topic, msg)
 }
 
 func (q *queue) Close() error {
 	return nil
-}
-
-func (q *queue) BackendStorage() BackendStorage {
-	return q.backendStorage
 }
