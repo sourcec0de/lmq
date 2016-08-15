@@ -149,7 +149,7 @@ func (lbs *lmdbBackendStorage) OpenTopic(topic string) (Topic, error) {
 	return t, err
 }
 
-func (lbs *lmdbBackendStorage) PersistMessages(topic string, msgs []*Message) {
+func (lbs *lmdbBackendStorage) PersistMessages(topic Topic, msgs []*Message) {
 
 }
 

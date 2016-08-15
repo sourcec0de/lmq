@@ -6,7 +6,7 @@ type Queue interface {
 	Open(opt *Options) error
 	Option() *Options
 	OpenTopic(topic string) (Topic, error)
-	PutMessages(topic string, msgs []*Message)
+	PutMessages(topic Topic, msgs []*Message)
 	Close() error
 }
 
@@ -72,7 +72,7 @@ func (q *queue) OpenTopic(topic string) (Topic, error) {
 	return q.backendStorage.OpenTopic(topic)
 }
 
-func (q *queue) PutMessages(topic string, msgs []*Message) {
+func (q *queue) PutMessages(topic Topic, msgs []*Message) {
 	q.backendStorage.PersistMessages(topic, msgs)
 }
 

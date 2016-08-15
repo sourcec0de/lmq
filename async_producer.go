@@ -127,7 +127,7 @@ func (p *asyncProducer) newTopicProducer(topic string) chan<- *ProducerMessage {
 		bufferSize,
 		bufferFlushInterval,
 		func(msgs []*Message) {
-			p.queue.PutMessages(topic, msgs)
+			p.queue.PutMessages(tp.topic, msgs)
 		})
 
 	p.waitGroup.Wrap(func() { tp.ppb.Flush() })
