@@ -99,30 +99,36 @@ func (p *asyncProducer) Input() chan<- *ProducerMessage {
 
 type topicProducer struct {
 	parent *asyncProducer
-	topic  string
-	input  <-chan *ProducerMessage
-	ppb    *PingPongBuffer
+
+	topic Topic
+
+	input <-chan *ProducerMessage
+	ppb   *PingPongBuffer
 }
 
 func (p *asyncProducer) newTopicProducer(topic string) chan<- *ProducerMessage {
+	tp := &topicProducer{parent: p}
+
+	t, err := tp.openTopic(topic)
+	if err != nil {
+		tp.parent.shutdown()
+		return nil
+	}
+	tp.topic = t
+
 	topicOption := p.opt.Topics[topic]
 	bufferSize := topicOption.BufferSize
 	bufferFlushInterval := topicOption.BufferFlushInterval
 
 	input := make(chan *ProducerMessage, bufferSize)
-	handler := func(msgs []*Message) {
-		p.queue.PutMessages(topic, msgs)
-	}
-
-	tp := &topicProducer{
-		parent: p,
-		topic:  topic,
-		input:  input,
-		ppb:    NewPingPongBuffer(p.exitChan, bufferSize, bufferFlushInterval, handler),
-	}
-
-	tp.loadTopicMeta()
-	tp.openTopicForPersist(topic)
+	tp.input = input
+	tp.ppb = NewPingPongBuffer(
+		p.exitChan,
+		bufferSize,
+		bufferFlushInterval,
+		func(msgs []*Message) {
+			p.queue.PutMessages(topic, msgs)
+		})
 
 	p.waitGroup.Wrap(func() { tp.ppb.Flush() })
 	p.waitGroup.Wrap(func() { tp.putMessage() })
@@ -130,15 +136,8 @@ func (p *asyncProducer) newTopicProducer(topic string) chan<- *ProducerMessage {
 	return input
 }
 
-func (tp *topicProducer) loadTopicMeta() {
-	err := tp.parent.queue.LoadTopicMeta(tp.topic)
-	if err != nil {
-		tp.parent.shutdown()
-	}
-}
-
-func (tp *topicProducer) openTopicForPersist(topic string) {
-	tp.parent.queue.OpenTopicForPersist(topic)
+func (tp *topicProducer) openTopic(topic string) (Topic, error) {
+	return tp.parent.queue.OpenTopic(topic)
 }
 
 func (p *asyncProducer) shutdown() {
