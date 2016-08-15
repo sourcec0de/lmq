@@ -74,7 +74,7 @@ func (q *queue) LoadTopicMeta(topic string) error {
 }
 
 func (q *queue) OpenTopicForPersist(topic string) {
-	return q.backendStorage.OpenTopicForPersist(topic)
+	q.backendStorage.OpenTopicForPersist(topic)
 }
 
 func (q *queue) PutMessages(topic string, msgs []*Message) {
