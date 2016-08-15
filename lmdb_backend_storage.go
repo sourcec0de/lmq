@@ -79,7 +79,7 @@ func (lbs *lmdbBackendStorage) OpenTopic(topic string, flag int) (Topic, error) 
 }
 
 func (lbs *lmdbBackendStorage) PersistMessages(topic Topic, msgs []*Message) {
-
+	topic.(*lmdbTopic).persistMessages(msgs)
 }
 
 func (lbs *lmdbBackendStorage) readerCheck() {

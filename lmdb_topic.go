@@ -77,10 +77,29 @@ func (t *lmdbTopic) openPartitionForPersist() {
 	}
 }
 
-func (t *lmdbTopic) persistedOffset(txn *lmdb.Txn) (uint64, error) {
-	offsetBuf, err := txn.Get(t.ownerMetaDB, []byte("producer_head"))
-	if err != nil {
-		return 0, err
+func (t *lmdbTopic) persistMessages(msgs []*Message) {
+	isFull := false
+	err := t.env.Update(func(txn *lmdb.Txn) error {
+		offset, err := t.persistedOffset(txn)
+		if err != nil {
+			return err
+		}
+		offset, err = t.persistToPartitionDB(offset, msgs)
+		if err != nil {
+			return t.updatePersistOffset(txn, offset)
+		}
+		return err
+	})
+	if err == nil {
+		return
 	}
-	return bytesToUInt64(offsetBuf), err
+	if lmdb.IsMapFull(err) {
+		isFull = true
+	} else {
+		panic(err)
+	}
+	if isFull {
+		t.persistRotate()
+		t.persistMessages(msgs)
+	}
 }

@@ -78,3 +78,23 @@ func (t *lmdbTopic) openPersistPartitionDB(id uint64) error {
 func (t *lmdbTopic) partitionPath(id uint64) string {
 	return fmt.Sprintf("%s/%s.%d", t.dataPath, t.opt.Name, id)
 }
+
+func (t *lmdbTopic) persistedOffset(txn *lmdb.Txn) (uint64, error) {
+	offsetBuf, err := txn.Get(t.ownerMetaDB, []byte("producer_head"))
+	if err != nil {
+		return 0, err
+	}
+	return bytesToUInt64(offsetBuf), err
+}
+
+func (t *lmdbTopic) persistToPartitionDB(offset uint64, msgs []*Message) (uint64, error) {
+	return 0, nil
+}
+
+func (t *lmdbTopic) updatePersistOffset(txn *lmdb.Txn, offset uint64) error {
+	return nil
+}
+
+func (t *lmdbTopic) persistRotate() {
+
+}
