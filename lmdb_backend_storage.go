@@ -9,128 +9,9 @@ import (
 	"github.com/bmatsuo/lmdb-go/lmdb"
 )
 
-type partitionMeta struct {
-	id     uint64
-	offset uint64
-}
-
-type topic struct {
-	opt TopicOption
-
-	ownerMetaDB     lmdb.DBI
-	partitionMetaDB lmdb.DBI
-	partitionID     uint64
-
-	persistEnv  *lmdb.Env
-	partitionDB lmdb.DBI
-}
-
-func newTopic(name string, opt *Options) *topic {
-	return &topic{
-		opt:             opt.Topics[name],
-		ownerMetaDB:     0,
-		partitionMetaDB: 0,
-		partitionID:     0,
-		persistEnv:      nil,
-		partitionDB:     0,
-	}
-}
-
-func (t *topic) openPartitionForPersist() {
-	var partitionID uint64
-	var err error
-
-	getPartitionID := func(txn *lmdb.Txn) error {
-		partitionID, err = t.choosePartitionForPersist(txn, false)
-		return err
-	}
-
-	if err = t.persistEnv.Update(getPartitionID); err != nil {
-		log.Panicf("Open partititon for persist failed: %s", err)
-	}
-
-	t.partitionID = partitionID
-}
-
-func (t *topic) lastestPartitionMeta(txn *lmdb.Txn) (*partitionMeta, error) {
-	cur, err := txn.OpenCursor(t.partitionMetaDB)
-	if err != nil {
-		return nil, err
-	}
-
-	idBuf, offsetBuf, err := cur.Get(nil, nil, lmdb.Last)
-	if err != nil {
-		return nil, err
-	}
-
-	pm := &partitionMeta{
-		id:     bytesToUInt64(idBuf),
-		offset: bytesToUInt64(offsetBuf),
-	}
-	return pm, nil
-}
-
-func (t *topic) choosePartitionForPersist(txn *lmdb.Txn, rotating bool) (uint64, error) {
-	pm, err := t.lastestPartitionMeta(txn)
-	if err != nil {
-		return 0, err
-	}
-
-	if rotating && t.partitionID == pm.id {
-		pm.id++
-		pm.offset++
-		err := t.updatePartitionMeta(txn, pm)
-		if err != nil {
-			return 0, err
-		}
-	}
-
-	t.partitionID = pm.id
-	return t.partitionID, nil
-}
-
-func (t *topic) updatePartitionMeta(txn *lmdb.Txn, pm *partitionMeta) error {
-	return txn.Put(t.partitionMetaDB, uInt64ToBytes(pm.id), uInt64ToBytes(pm.offset), lmdb.Append)
-}
-
-func (t *topic) loadMeta(txn *lmdb.Txn) error {
-	ownerMetaDBName := fmt.Sprintf("%s-%s", t.opt.Name, "ownerMeta")
-	ownerMetaDB, err := txn.CreateDBI(ownerMetaDBName)
-	if err != nil {
-		return err
-	}
-	t.ownerMetaDB = ownerMetaDB
-	initOffset := uInt64ToBytes(0)
-	err = txn.Put(ownerMetaDB, []byte("producer_head"), initOffset, lmdb.NoOverwrite)
-	if err != nil {
-		if err, ok := err.(*lmdb.OpError); ok {
-			if err.Errno == lmdb.KeyExist {
-				return nil
-			}
-			return err
-		}
-	}
-	partitionMetaDBName := fmt.Sprintf("%s-%s", t.opt.Name, "partitionMeta")
-	partitionMetaDB, err := txn.CreateDBI(partitionMetaDBName)
-	if err != nil {
-		return err
-	}
-	t.partitionMetaDB = partitionMetaDB
-	initPartitionID := initOffset
-	return txn.Put(t.partitionMetaDB, initPartitionID, initOffset, lmdb.NoOverwrite)
-}
-
-func (t *topic) persistedOffset(txn *lmdb.Txn) (uint64, error) {
-	offsetBuf, err := txn.Get(t.ownerMetaDB, []byte("producer_head"))
-	if err != nil {
-		return 0, err
-	}
-	return bytesToUInt64(offsetBuf), err
-}
-
 type lmdbBackendStorage struct {
 	env   *lmdb.Env
-	topic map[string]*topic
+	topic map[string]*lmdbTopic
 	sync.RWMutex
 
 	opt *Options
@@ -164,7 +45,7 @@ func NewLmdbBackendStorage(opt *Options) (BackendStorage, error) {
 	return lbs, nil
 }
 
-func (lbs *lmdbBackendStorage) OpenTopic(topic string) (Topic, error) {
+func (lbs *lmdbBackendStorage) OpenTopic(topic string, flag int) (Topic, error) {
 	lbs.RLock()
 	t, ok := lbs.topic[topic]
 	lbs.RUnlock()
@@ -179,14 +60,20 @@ func (lbs *lmdbBackendStorage) OpenTopic(topic string) (Topic, error) {
 		return t, nil
 	}
 
-	t = newTopic(topic, lbs.opt)
+	t = newLmdbTopic(topic, lbs.opt)
 	err := lbs.env.Update(func(txn *lmdb.Txn) error {
 		return t.loadMeta(txn)
 	})
 	lbs.topic[topic] = t
 	lbs.Unlock()
 
-	t.openPartitionForPersist()
+	switch flag {
+	case 0:
+		t.openPartitionForPersist()
+	case 1:
+	default:
+		log.Fatalf("Open topic faild: unvaild %d flag", flag)
+	}
 
 	return t, err
 }

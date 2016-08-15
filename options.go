@@ -5,7 +5,7 @@ import "time"
 type TopicOption struct {
 	Name string
 
-	MaxBytesPerFile string
+	MaxBytesPerFile int64
 	MaxDataFiles    uint64
 
 	BufferSize          int
