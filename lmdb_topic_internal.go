@@ -88,7 +88,17 @@ func (t *lmdbTopic) persistedOffset(txn *lmdb.Txn) (uint64, error) {
 }
 
 func (t *lmdbTopic) persistToPartitionDB(offset uint64, msgs []*Message) (uint64, error) {
-	return 0, nil
+	err := t.env.Update(func(txn *lmdb.Txn) error {
+		for _, v := range msgs {
+			offset++
+			k := uInt64ToBytes(offset)
+			if err := txn.Put(t.partitionDB, k, v.Body, lmdb.Append); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	return offset, err
 }
 
 func (t *lmdbTopic) updatePersistOffset(txn *lmdb.Txn, offset uint64) error {
