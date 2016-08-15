@@ -122,39 +122,31 @@ func NewLmdbBackendStorage(opt *Options) (BackendStorage, error) {
 	return lbs, nil
 }
 
-func (lbs *lmdbBackendStorage) LoadTopicMeta(topic string) error {
+func (lbs *lmdbBackendStorage) OpenTopic(topic string) (Topic, error) {
 	lbs.RLock()
-	_, ok := lbs.topic[topic]
+	t, ok := lbs.topic[topic]
 	lbs.RUnlock()
 	if ok {
-		return nil
+		return t, nil
 	}
 
 	lbs.Lock()
 
-	_, ok = lbs.topic[topic]
+	t, ok = lbs.topic[topic]
 	if ok {
-		return nil
+		return t, nil
 	}
 
-	t := newTopic(topic, lbs.opt)
+	t = newTopic(topic, lbs.opt)
 	err := lbs.env.Update(func(txn *lmdb.Txn) error {
 		return t.loadMeta(txn)
 	})
 	lbs.topic[topic] = t
 	lbs.Unlock()
 
-	return err
-}
-
-func (lbs *lmdbBackendStorage) OpenTopicForPersist(topic string) {
-	lbs.RLock()
-	t, ok := lbs.topic[topic]
-	lbs.RUnlock()
-	if !ok {
-		log.Fatalf("Open topic for persist failed: topic: %s has not exist!", topic)
-	}
 	t.openPartitionForPersist()
+
+	return t, err
 }
 
 func (lbs *lmdbBackendStorage) PersistMessages(topic string, msgs []*Message) {
