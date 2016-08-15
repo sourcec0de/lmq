@@ -5,8 +5,7 @@ import "sync"
 type Queue interface {
 	Open(opt *Options) error
 	Option() *Options
-	LoadTopicMeta(topic string) error
-	OpenTopicForPersist(topic string)
+	OpenTopic(topic string) (Topic, error)
 	PutMessages(topic string, msgs []*Message)
 	Close() error
 }
@@ -69,12 +68,8 @@ func (q *queue) Option() *Options {
 	return q.opt
 }
 
-func (q *queue) LoadTopicMeta(topic string) error {
-	return q.backendStorage.LoadTopicMeta(topic)
-}
-
-func (q *queue) OpenTopicForPersist(topic string) {
-	q.backendStorage.OpenTopicForPersist(topic)
+func (q *queue) OpenTopic(topic string) (Topic, error) {
+	return q.backendStorage.OpenTopic(topic)
 }
 
 func (q *queue) PutMessages(topic string, msgs []*Message) {
