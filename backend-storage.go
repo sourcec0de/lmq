@@ -1,7 +1,6 @@
 package lmq
 
 type BackendStorage interface {
-	LoadTopicMeta(topic string) error
-	OpenTopicForPersist(topic string)
+	OpenTopic(topic string) (Topic, error)
 	PersistMessages(topic string, msgs []*Message)
 }
