@@ -90,7 +90,7 @@ func (t *topic) choosePartitionForPersist(txn *lmdb.Txn, rotating bool) (uint64,
 }
 
 func (t *topic) updatePartitionMeta(txn *lmdb.Txn, pm *partitionMeta) error {
-	return nil
+	return txn.Put(t.partitionMetaDB, uInt64ToBytes(pm.id), uInt64ToBytes(pm.offset), lmdb.Append)
 }
 
 func (t *topic) loadMeta(txn *lmdb.Txn) error {
