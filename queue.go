@@ -6,6 +6,7 @@ type Queue interface {
 	Open(opt *Options) error
 	Option() *Options
 	LoadTopicMeta(topic string) error
+	OpenTopicForPersist(topic string)
 	PutMessages(topic string, msgs []*Message)
 	Close() error
 }
@@ -70,6 +71,10 @@ func (q *queue) Option() *Options {
 
 func (q *queue) LoadTopicMeta(topic string) error {
 	return q.backendStorage.LoadTopicMeta(topic)
+}
+
+func (q *queue) OpenTopicForPersist(topic string) {
+	return q.backendStorage.OpenTopicForPersist(topic)
 }
 
 func (q *queue) PutMessages(topic string, msgs []*Message) {

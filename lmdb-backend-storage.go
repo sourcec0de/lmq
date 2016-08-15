@@ -2,6 +2,7 @@ package lmq
 
 import (
 	"fmt"
+	"log"
 	"sync"
 	"time"
 
@@ -13,6 +14,10 @@ type topic struct {
 
 	ownerMetaDB     lmdb.DBI
 	partitionMetaDB lmdb.DBI
+	partitionID     uint64
+
+	persistEnv  *lmdb.Env
+	partitionDB lmdb.DBI
 }
 
 func newTopic(name string, opt *Options) *topic {
@@ -20,7 +25,30 @@ func newTopic(name string, opt *Options) *topic {
 		opt:             opt.Topics[name],
 		ownerMetaDB:     0,
 		partitionMetaDB: 0,
+		partitionID:     0,
+		persistEnv:      nil,
+		partitionDB:     0,
 	}
+}
+
+func (t *topic) openPartitionForPersist() {
+	var partitionID uint64
+	var err error
+
+	getPartitionID := func(txn *lmdb.Txn) error {
+		partitionID, err = t.choosePartitionForPersist(txn, false)
+		return err
+	}
+
+	if err = t.persistEnv.Update(getPartitionID); err != nil {
+		log.Panicf("Open partititon for persist failed: %s", err)
+	}
+
+	t.partitionID = partitionID
+}
+
+func (t *topic) choosePartitionForPersist(txn *lmdb.Txn, rotating bool) (uint64, error) {
+	return 0, nil
 }
 
 func (t *topic) loadMeta(txn *lmdb.Txn) error {
@@ -50,7 +78,15 @@ func (t *topic) loadMeta(txn *lmdb.Txn) error {
 	return txn.Put(t.partitionMetaDB, initPartitionID, initOffset, lmdb.NoOverwrite)
 }
 
-type LmdbBackendStorage struct {
+func (t *topic) persistedOffset(txn *lmdb.Txn) (uint64, error) {
+	offsetBuf, err := txn.Get(t.ownerMetaDB, []byte("producer_head"))
+	if err != nil {
+		return 0, err
+	}
+	return bytesToUInt64(offsetBuf), err
+}
+
+type lmdbBackendStorage struct {
 	env   *lmdb.Env
 	topic map[string]*topic
 	sync.RWMutex
@@ -61,7 +97,7 @@ type LmdbBackendStorage struct {
 	waitGroup WaitGroupWrapper
 }
 
-func NewLmdbBackendStorage(opt *Options) (BackendStorage, error) {
+func NewlmdbBackendStorage(opt *Options) (BackendStorage, error) {
 	env, err := lmdb.NewEnv()
 	if err != nil {
 		return nil, err
@@ -79,14 +115,14 @@ func NewLmdbBackendStorage(opt *Options) (BackendStorage, error) {
 	if _, err := env.ReaderCheck(); err != nil {
 		return nil, err
 	}
-	lbs := &LmdbBackendStorage{
+	lbs := &lmdbBackendStorage{
 		env: env,
 	}
 	lbs.waitGroup.Wrap(func() { lbs.readerCheck() })
 	return lbs, nil
 }
 
-func (lbs *LmdbBackendStorage) LoadTopicMeta(topic string) error {
+func (lbs *lmdbBackendStorage) LoadTopicMeta(topic string) error {
 	lbs.RLock()
 	_, ok := lbs.topic[topic]
 	lbs.RUnlock()
@@ -111,11 +147,21 @@ func (lbs *LmdbBackendStorage) LoadTopicMeta(topic string) error {
 	return err
 }
 
-func (lbs *LmdbBackendStorage) PersistMessages(topic string, msgs []*Message) {
+func (lbs *lmdbBackendStorage) OpenTopicForPersist(topic string) {
+	lbs.RLock()
+	t, ok := lbs.topic[topic]
+	lbs.RUnlock()
+	if !ok {
+		log.Fatalf("Open topic for persist failed: topic: %s has not exist!", topic)
+	}
+	t.openPartitionForPersist()
+}
+
+func (lbs *lmdbBackendStorage) PersistMessages(topic string, msgs []*Message) {
 
 }
 
-func (lbs *LmdbBackendStorage) readerCheck() {
+func (lbs *lmdbBackendStorage) readerCheck() {
 	checkTicker := time.NewTicker(time.Second)
 	for {
 		select {

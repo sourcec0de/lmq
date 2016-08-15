@@ -122,6 +122,7 @@ func (p *asyncProducer) newTopicProducer(topic string) chan<- *ProducerMessage {
 	}
 
 	tp.loadTopicMeta()
+	tp.openTopicForPersist(topic)
 
 	p.waitGroup.Wrap(func() { tp.ppb.Flush() })
 	p.waitGroup.Wrap(func() { tp.putMessage() })
@@ -134,6 +135,10 @@ func (tp *topicProducer) loadTopicMeta() {
 	if err != nil {
 		tp.parent.shutdown()
 	}
+}
+
+func (tp *topicProducer) openTopicForPersist(topic string) {
+	tp.parent.queue.OpenTopicForPersist(topic)
 }
 
 func (p *asyncProducer) shutdown() {
