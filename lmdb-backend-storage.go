@@ -9,6 +9,11 @@ import (
 	"github.com/bmatsuo/lmdb-go/lmdb"
 )
 
+type partitionMeta struct {
+	id     uint64
+	offset uint64
+}
+
 type topic struct {
 	opt TopicOption
 
@@ -47,8 +52,45 @@ func (t *topic) openPartitionForPersist() {
 	t.partitionID = partitionID
 }
 
+func (t *topic) lastestPartitionMeta(txn *lmdb.Txn) (*partitionMeta, error) {
+	cur, err := txn.OpenCursor(t.partitionMetaDB)
+	if err != nil {
+		return nil, err
+	}
+
+	idBuf, offsetBuf, err := cur.Get(nil, nil, lmdb.Last)
+	if err != nil {
+		return nil, err
+	}
+
+	pm := &partitionMeta{
+		id:     bytesToUInt64(idBuf),
+		offset: bytesToUInt64(offsetBuf),
+	}
+	return pm, nil
+}
+
 func (t *topic) choosePartitionForPersist(txn *lmdb.Txn, rotating bool) (uint64, error) {
-	return 0, nil
+	pm, err := t.lastestPartitionMeta(txn)
+	if err != nil {
+		return 0, err
+	}
+
+	if rotating && t.partitionID == pm.id {
+		pm.id++
+		pm.offset++
+		err := t.updatePartitionMeta(txn, pm)
+		if err != nil {
+			return 0, err
+		}
+	}
+
+	t.partitionID = pm.id
+	return t.partitionID, nil
+}
+
+func (t *topic) updatePartitionMeta(txn *lmdb.Txn, pm *partitionMeta) error {
+	return nil
 }
 
 func (t *topic) loadMeta(txn *lmdb.Txn) error {
