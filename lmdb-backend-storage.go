@@ -97,7 +97,7 @@ type lmdbBackendStorage struct {
 	waitGroup WaitGroupWrapper
 }
 
-func NewlmdbBackendStorage(opt *Options) (BackendStorage, error) {
+func NewLmdbBackendStorage(opt *Options) (BackendStorage, error) {
 	env, err := lmdb.NewEnv()
 	if err != nil {
 		return nil, err
