@@ -102,7 +102,7 @@ func (t *lmdbTopic) persistToPartitionDB(offset uint64, msgs []*Message) (uint64
 }
 
 func (t *lmdbTopic) updatePersistOffset(txn *lmdb.Txn, offset uint64) error {
-	return nil
+	return txn.Put(t.ownerMetaDB, []byte("producer_head"), uInt64ToBytes(offset+1), 0)
 }
 
 func (t *lmdbTopic) persistRotate() {
