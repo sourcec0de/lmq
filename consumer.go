@@ -8,6 +8,8 @@ type consumer struct {
 	queue    Queue
 	name     string
 	children map[string]*topicConsumer
+
+	waitGroup WaitGroupWrapper
 }
 
 func NewConsumer(opt *Options) (Consumer, error) {
@@ -55,17 +57,31 @@ func (c *consumer) ConsumeTopic(topic string, offset uint64) (TopicConsumer, err
 		topic:     t,
 		fetchSize: c.opt.Topics[topic].fetchSize,
 	}
+
 	if err := child.chooseStartingOffset(offset); err != nil {
 		return nil, err
 	}
 
+	if err := c.addChild(child); err != nil {
+		return nil, err
+	}
+
+	c.waitGroup.Wrap(func() { child.readMessages() })
 	return child, nil
+}
+
+func (c *consumer) openTopic(topic string) (Topic, error) {
+	return c.queue.OpenTopic(topic, 1)
+}
+
+func (c *consumer) addChild(child *topicConsumer) error {
+	return nil
 }
 
 func (child *topicConsumer) chooseStartingOffset(offset uint64) error {
 	return nil
 }
 
-func (c *consumer) openTopic(topic string) (Topic, error) {
-	return c.queue.OpenTopic(topic, 1)
+func (child *topicConsumer) readMessages() {
+
 }
