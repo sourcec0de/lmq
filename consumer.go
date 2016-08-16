@@ -31,3 +31,18 @@ func NewConsumerWithQueue(queue Queue) (Consumer, error) {
 	}
 	return c, nil
 }
+
+type TopicConsumer interface{}
+type topicConsumer struct {
+	consumer *consumer
+	opt      *Options
+
+	topic    Topic
+	messages chan *[]byte
+
+	fetchSize int32
+}
+
+func (c *consumer) ConsumeTopic(topic string, offset uint64) (TopicConsumer, error) {
+
+}
