@@ -60,7 +60,7 @@ func (lbs *lmdbBackendStorage) OpenTopic(topic string, flag int) (Topic, error) 
 		return t, nil
 	}
 
-	t = newLmdbTopic(topic, lbs.opt)
+	t = newLmdbTopic(topic, lbs.env, lbs.opt)
 	err := lbs.env.Update(func(txn *lmdb.Txn) error {
 		return t.loadMeta(txn)
 	})

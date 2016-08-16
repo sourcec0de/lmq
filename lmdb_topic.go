@@ -16,6 +16,8 @@ type lmdbTopic struct {
 	opt      TopicOption
 	dataPath string
 
+	queueEnv *lmdb.Env
+
 	ownerMetaDB     lmdb.DBI
 	partitionMetaDB lmdb.DBI
 	partitionID     uint64
@@ -24,10 +26,11 @@ type lmdbTopic struct {
 	partitionDB lmdb.DBI
 }
 
-func newLmdbTopic(name string, opt *Options) *lmdbTopic {
+func newLmdbTopic(name string, queueEvn *lmdb.Env, opt *Options) *lmdbTopic {
 	return &lmdbTopic{
 		opt:             opt.Topics[name],
 		dataPath:        opt.DataPath,
+		queueEnv:        queueEvn,
 		ownerMetaDB:     0,
 		partitionMetaDB: 0,
 		partitionID:     0,
@@ -64,7 +67,7 @@ func (t *lmdbTopic) loadMeta(txn *lmdb.Txn) error {
 }
 
 func (t *lmdbTopic) openPartitionForPersist() {
-	err := t.env.Update(func(txn *lmdb.Txn) error {
+	err := t.queueEnv.Update(func(txn *lmdb.Txn) error {
 		partitionID, err := t.choosePartitionForPersist(txn, false)
 		if err != nil {
 			return err
@@ -79,7 +82,7 @@ func (t *lmdbTopic) openPartitionForPersist() {
 
 func (t *lmdbTopic) persistMessages(msgs []*Message) {
 	isFull := false
-	err := t.env.Update(func(txn *lmdb.Txn) error {
+	err := t.queueEnv.Update(func(txn *lmdb.Txn) error {
 		offset, err := t.persistedOffset(txn)
 		if err != nil {
 			return err

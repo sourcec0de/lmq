@@ -2,6 +2,7 @@ package lmq
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/bmatsuo/lmdb-go/lmdb"
 )
@@ -106,5 +107,74 @@ func (t *lmdbTopic) updatePersistOffset(txn *lmdb.Txn, offset uint64) error {
 }
 
 func (t *lmdbTopic) persistRotate() {
+	err := t.queueEnv.Update(func(txn *lmdb.Txn) error {
+		if err := t.closeCurrentPersistPartition(); err != nil {
+			return err
+		}
+		count, err := t.countPartitions(txn)
+		if err != nil {
+			return err
+		}
+		if count > t.opt.MaxDataFiles {
+			expiredCount := count - t.opt.MaxDataFiles
+			if err := t.removeExpiredPartitions(txn, expiredCount); err != nil {
+				return err
+			}
+		}
+		partitionID, err := t.choosePartitionForPersist(txn, true)
+		if err != nil {
+			return err
+		}
+		return t.openPersistPartitionDB(partitionID)
+	})
+	if err != nil {
+		panic(err)
+	}
+}
 
+func (t *lmdbTopic) closeCurrentPersistPartition() error {
+	t.env.CloseDBI(t.partitionDB)
+	return t.env.Close()
+}
+
+func (t *lmdbTopic) countPartitions(txn *lmdb.Txn) (uint64, error) {
+	cursor, err := txn.OpenCursor(t.partitionMetaDB)
+	if err != nil {
+		return 0, err
+	}
+	beginIDBbuf, _, err := cursor.Get(nil, nil, lmdb.First)
+	if err != nil {
+		return 0, err
+	}
+	endIDBbuf, _, err := cursor.Get(nil, nil, lmdb.Last)
+	if err != nil {
+		return 0, err
+	}
+	return bytesToUInt64(endIDBbuf) - bytesToUInt64(beginIDBbuf) + 1, nil
+}
+
+func (t *lmdbTopic) removeExpiredPartitions(txn *lmdb.Txn, expiredCount uint64) error {
+	cursor, err := txn.OpenCursor(t.partitionMetaDB)
+	if err != nil {
+		return err
+	}
+
+	i := uint64(0)
+	var idBuf []byte
+	var err1 error
+	for idBuf, _, err1 = cursor.Get(nil, nil, lmdb.First); err1 == nil && i < expiredCount; i++ {
+		id := bytesToUInt64(idBuf)
+		if err := cursor.Del(0); err != nil {
+			return err
+		}
+		partitionPath := t.partitionPath(id)
+		if err := os.Remove(partitionPath); err != nil {
+			return err
+		}
+		if err := os.Remove(fmt.Sprintf("%s-lock", partitionPath)); err != nil {
+			return err
+		}
+		idBuf, _, err1 = cursor.Get(nil, nil, lmdb.Next)
+	}
+	return err1
 }
