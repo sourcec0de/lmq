@@ -1,13 +1,17 @@
 package lmq
 
+import "sync"
+
 type Consumer interface {
 }
 
 type consumer struct {
-	opt      *Options
-	queue    Queue
-	name     string
-	children map[string]*topicConsumer
+	opt   *Options
+	queue Queue
+	name  string
+
+	sync.Mutex
+	children []*topicConsumer
 
 	waitGroup WaitGroupWrapper
 }
@@ -29,7 +33,7 @@ func NewConsumerWithQueue(queue Queue) (Consumer, error) {
 	c := &consumer{
 		queue:    queue,
 		opt:      queue.Option(),
-		children: make(map[string]*topicConsumer),
+		children: make([]*topicConsumer, 0),
 	}
 	return c, nil
 }
@@ -62,11 +66,10 @@ func (c *consumer) ConsumeTopic(topic string, offset uint64) (TopicConsumer, err
 		return nil, err
 	}
 
-	if err := c.addChild(child); err != nil {
-		return nil, err
-	}
+	c.addChild(child)
 
 	c.waitGroup.Wrap(func() { child.readMessages() })
+
 	return child, nil
 }
 
@@ -74,8 +77,11 @@ func (c *consumer) openTopic(topic string) (Topic, error) {
 	return c.queue.OpenTopic(topic, 1)
 }
 
-func (c *consumer) addChild(child *topicConsumer) error {
-	return nil
+func (c *consumer) addChild(child *topicConsumer) {
+	c.Lock()
+	defer c.Unlock()
+
+	c.children = append(c.children, child)
 }
 
 func (child *topicConsumer) chooseStartingOffset(offset uint64) error {
