@@ -178,3 +178,11 @@ func (t *lmdbTopic) removeExpiredPartitions(txn *lmdb.Txn, expiredCount uint64) 
 	}
 	return err1
 }
+
+func (t *lmdbTopic) choosePartitionForConsume(txn *lmdb.Txn, groupID string) (uint64, error) {
+	return 0, nil
+}
+
+func (t *lmdbTopic) openConsumPartitionDB(id uint64) error {
+	return nil
+}
