@@ -45,7 +45,7 @@ func NewLmdbBackendStorage(opt *Options) (BackendStorage, error) {
 	return lbs, nil
 }
 
-func (lbs *lmdbBackendStorage) OpenTopic(topic string, flag int) (Topic, error) {
+func (lbs *lmdbBackendStorage) OpenTopic(topic, groupID string, flag int) (Topic, error) {
 	lbs.RLock()
 	t, ok := lbs.topic[topic]
 	lbs.RUnlock()
@@ -71,6 +71,7 @@ func (lbs *lmdbBackendStorage) OpenTopic(topic string, flag int) (Topic, error) 
 	case 0:
 		t.openPartitionForPersist()
 	case 1:
+		t.openPartitionForConsume(groupID)
 	default:
 		log.Fatalf("Open topic faild: unvaild %d flag", flag)
 	}
