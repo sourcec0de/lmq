@@ -24,6 +24,8 @@ type lmdbTopic struct {
 
 	env         *lmdb.Env
 	partitionDB lmdb.DBI
+	cursor      *lmdb.Cursor
+	rtxn        *lmdb.Txn
 }
 
 func newLmdbTopic(name string, queueEvn *lmdb.Env, opt *Options) *lmdbTopic {
