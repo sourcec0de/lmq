@@ -7,6 +7,7 @@ type Queue interface {
 	Option() *Options
 	OpenTopic(topic, groupID string, flag int) (Topic, error)
 	PutMessages(topic Topic, msgs []*Message)
+	ReadMessages(topic Topic, msgs chan<- *[]byte)
 	Close() error
 }
 
@@ -74,6 +75,10 @@ func (q *queue) OpenTopic(topic, groupID string, flag int) (Topic, error) {
 
 func (q *queue) PutMessages(topic Topic, msgs []*Message) {
 	q.backendStorage.PersistMessages(topic, msgs)
+}
+
+func (q *queue) ReadMessages(topic Topic, msgs chan<- *[]byte) {
+	q.backendStorage.ScanMessages(topic, msgs)
 }
 
 func (q *queue) Close() error {

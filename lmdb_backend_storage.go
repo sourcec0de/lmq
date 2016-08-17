@@ -83,6 +83,10 @@ func (lbs *lmdbBackendStorage) PersistMessages(topic Topic, msgs []*Message) {
 	topic.(*lmdbTopic).persistMessages(msgs)
 }
 
+func (lbs *lmdbBackendStorage) ScanMessages(topic Topic, msgs chan<- *[]byte) {
+
+}
+
 func (lbs *lmdbBackendStorage) readerCheck() {
 	checkTicker := time.NewTicker(time.Second)
 	for {

@@ -81,5 +81,5 @@ func (c *consumer) addChild(child *topicConsumer) {
 }
 
 func (child *topicConsumer) readMessages() {
-
+	child.consumer.queue.ReadMessages(child.topic, child.messages)
 }
