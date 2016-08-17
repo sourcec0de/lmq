@@ -182,7 +182,7 @@ func (t *lmdbTopic) removeExpiredPartitions(txn *lmdb.Txn, expiredCount uint64) 
 func (t *lmdbTopic) choosePartitionForConsume(txn *lmdb.Txn, groupID string) (uint64, error) {
 	partititonID, err := t.consumePartitionID(txn, groupID, t.partitionID)
 	if err != nil {
-		return nil
+		return 0, nil
 	}
 	t.partitionID = partititonID
 	return partititonID, nil
