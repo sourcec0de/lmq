@@ -109,6 +109,13 @@ func (t *lmdbTopic) persistMessages(msgs []*Message) {
 
 func (t *lmdbTopic) openPartitionForConsume(groupID string) {
 	err := t.queueEnv.Update(func(txn *lmdb.Txn) error {
-
+		partitionID, err := t.choosePartitionForConsume(txn, groupID)
+		if err != nil {
+			return err
+		}
+		return t.openConsumPartitionDB(partitionID)
 	})
+	if err != nil {
+		log.Panicf("Open partititon for persist failed: %s", err)
+	}
 }
