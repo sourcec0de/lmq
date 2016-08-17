@@ -188,7 +188,7 @@ func (t *lmdbTopic) choosePartitionForConsume(txn *lmdb.Txn, groupID string) (ui
 	return partititonID, nil
 }
 
-func (t *lmdbTopic) openConsumPartitionDB(id uint64) error {
+func (t *lmdbTopic) openConsumePartitionDB(id uint64) error {
 	return nil
 }
 

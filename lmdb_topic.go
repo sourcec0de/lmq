@@ -113,7 +113,7 @@ func (t *lmdbTopic) openPartitionForConsume(groupID string) {
 		if err != nil {
 			return err
 		}
-		return t.openConsumPartitionDB(partitionID)
+		return t.openConsumePartitionDB(partitionID)
 	})
 	if err != nil {
 		log.Panicf("Open partititon for persist failed: %s", err)
