@@ -6,9 +6,9 @@ type Consumer interface {
 }
 
 type consumer struct {
-	opt   *Options
-	queue Queue
-	name  string
+	opt     *Options
+	queue   Queue
+	groupID string
 
 	sync.Mutex
 	children []*topicConsumer
@@ -62,10 +62,6 @@ func (c *consumer) ConsumeTopic(topic string, offset uint64) (TopicConsumer, err
 		fetchSize: c.opt.Topics[topic].fetchSize,
 	}
 
-	if err := child.chooseStartingOffset(offset); err != nil {
-		return nil, err
-	}
-
 	c.addChild(child)
 
 	c.waitGroup.Wrap(func() { child.readMessages() })
@@ -74,7 +70,7 @@ func (c *consumer) ConsumeTopic(topic string, offset uint64) (TopicConsumer, err
 }
 
 func (c *consumer) openTopic(topic string) (Topic, error) {
-	return c.queue.OpenTopic(topic, 1)
+	return c.queue.OpenTopic(topic, c.groupID, 1)
 }
 
 func (c *consumer) addChild(child *topicConsumer) {
@@ -82,10 +78,6 @@ func (c *consumer) addChild(child *topicConsumer) {
 	defer c.Unlock()
 
 	c.children = append(c.children, child)
-}
-
-func (child *topicConsumer) chooseStartingOffset(offset uint64) error {
-	return nil
 }
 
 func (child *topicConsumer) readMessages() {
