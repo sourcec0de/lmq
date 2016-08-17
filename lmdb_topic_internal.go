@@ -180,9 +180,48 @@ func (t *lmdbTopic) removeExpiredPartitions(txn *lmdb.Txn, expiredCount uint64) 
 }
 
 func (t *lmdbTopic) choosePartitionForConsume(txn *lmdb.Txn, groupID string) (uint64, error) {
-	return 0, nil
+	partititonID, err := t.consumePartitionID(txn, groupID, t.partitionID)
+	if err != nil {
+		return nil
+	}
+	t.partitionID = partititonID
+	return partititonID, nil
 }
 
 func (t *lmdbTopic) openConsumPartitionDB(id uint64) error {
 	return nil
+}
+
+func (t *lmdbTopic) consumePartitionID(txn *lmdb.Txn, groupID string, searchFrom uint64) (uint64, error) {
+	offset, err := t.consumeOffset(txn, groupID)
+	if err != nil {
+		return 0, err
+	}
+
+	var partitionID uint64
+	var eoffset uint64
+
+	cursor, err := txn.OpenCursor(t.partitionMetaDB)
+	if err != nil {
+		return 0, err
+	}
+	k, v, err := cursor.Get(uInt64ToBytes(searchFrom), nil, lmdb.SetRange)
+	partitionID = bytesToUInt64(k)
+	eoffset = bytesToUInt64(v)
+	for err == nil && offset >= eoffset {
+		k, v, err = cursor.Get(nil, nil, lmdb.Next)
+		if err == nil {
+			eoffset = bytesToUInt64(v)
+			if offset < eoffset {
+				return partitionID, nil
+			}
+			partitionID = bytesToUInt64(k)
+		}
+	}
+
+	return partitionID, nil
+}
+
+func (t *lmdbTopic) consumeOffset(txn *lmdb.Txn, groupID string) (uint64, error) {
+	return 0, nil
 }
