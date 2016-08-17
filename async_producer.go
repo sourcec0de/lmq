@@ -137,7 +137,7 @@ func (p *asyncProducer) newTopicProducer(topic string) chan<- *ProducerMessage {
 }
 
 func (tp *topicProducer) openTopic(topic string) (Topic, error) {
-	return tp.parent.queue.OpenTopic(topic, 0)
+	return tp.parent.queue.OpenTopic(topic, "", 0)
 }
 
 func (p *asyncProducer) shutdown() {
