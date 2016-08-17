@@ -189,7 +189,47 @@ func (t *lmdbTopic) choosePartitionForConsume(txn *lmdb.Txn, groupID string) (ui
 }
 
 func (t *lmdbTopic) openConsumePartitionDB(id uint64) error {
-	return nil
+	path := t.partitionPath(id)
+
+	env, err := lmdb.NewEnv()
+	if err != nil {
+		return err
+	}
+	t.env = env
+	if err = env.SetMaxDBs(1); err != nil {
+		return err
+	}
+	if err = env.SetMapSize(t.opt.MaxBytesPerFile); err != nil {
+		return err
+	}
+	if err = env.Open(path, lmdb.Readonly|lmdb.NoSync|lmdb.NoSubdir, 0644); err != nil {
+		return err
+	}
+	if _, err = env.ReaderCheck(); err != nil {
+		return err
+	}
+	err = env.View(func(txn *lmdb.Txn) error {
+		t.partitionDB, err = txn.CreateDBI(uInt64ToString(t.partitionID))
+		return err
+	})
+	if err != nil {
+		return err
+	}
+	rtxn, err := env.BeginTxn(nil, lmdb.Readonly)
+	if err != nil {
+
+		return err
+	}
+	t.rtxn = rtxn
+	cursor, err := rtxn.OpenCursor(t.partitionDB)
+	if err != nil {
+
+		return err
+	}
+	t.cursor = cursor
+	rtxn.Reset()
+
+	return rtxn.Renew()
 }
 
 func (t *lmdbTopic) consumePartitionID(txn *lmdb.Txn, groupID string, searchFrom uint64) (uint64, error) {
