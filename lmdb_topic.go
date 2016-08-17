@@ -106,3 +106,9 @@ func (t *lmdbTopic) persistMessages(msgs []*Message) {
 		t.persistMessages(msgs)
 	}
 }
+
+func (t *lmdbTopic) openPartitionForConsume(groupID string) {
+	err := t.queueEnv.Update(func(txn *lmdb.Txn) error {
+
+	})
+}
