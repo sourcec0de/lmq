@@ -3,6 +3,7 @@ package lmq
 import (
 	"fmt"
 	"log"
+	"runtime"
 
 	"github.com/bmatsuo/lmdb-go/lmdb"
 )
@@ -119,5 +120,17 @@ func (t *lmdbTopic) openPartitionForConsume(groupID string) {
 	})
 	if err != nil {
 		log.Panicf("Open partititon for persist failed: %s", err)
+	}
+}
+
+func (t *lmdbTopic) scanMessages(topic Topic, groupID string, msgs chan<- *[]byte) {
+	for {
+		fetchSize, eof := t.scanPartition(topic, groupID, msgs)
+		if (fetchSize == t.opt.fetchSize) || lmdb.IsNotFound(eof) {
+			runtime.Gosched()
+		}
+		if lmdb.IsNotFound(eof) {
+			t.rotateScanPartition()
+		}
 	}
 }
