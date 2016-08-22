@@ -130,7 +130,7 @@ func (t *lmdbTopic) scanMessages(groupID string, msgs chan<- *[]byte) {
 			runtime.Gosched()
 		}
 		if lmdb.IsNotFound(eof) {
-			t.rotateScanPartition()
+			t.rotateScanPartition(groupID)
 		}
 	}
 }

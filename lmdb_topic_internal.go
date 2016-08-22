@@ -312,6 +312,29 @@ func (t *lmdbTopic) updateConsumeOffset(txn *lmdb.Txn, groupID string, offset ui
 	}
 }
 
-func (t *lmdbTopic) rotateScanPartition() {
+func (t *lmdbTopic) rotateScanPartition(groupID string) {
+	err := t.queueEnv.Update(func(txn *lmdb.Txn) error {
+		if err := t.closePartition(); err != nil {
+			return err
+		}
+		partitionID, err := t.choosePartitionForConsume(txn, groupID)
+		if err != nil {
+			return err
+		}
+		return t.openConsumePartitionDB(partitionID)
+	})
+	if err != nil {
+		panic(err)
+	}
+}
 
+func (t *lmdbTopic) closePartition() error {
+	if t.cursor != nil {
+		t.cursor.Close()
+	}
+	if t.rtxn != nil {
+		t.rtxn.Abort()
+	}
+	t.env.CloseDBI(t.partitionDB)
+	return t.env.Close()
 }
