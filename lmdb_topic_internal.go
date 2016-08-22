@@ -267,7 +267,7 @@ func (t *lmdbTopic) consumeOffset(txn *lmdb.Txn, groupID string) (uint64, error)
 	return 0, nil
 }
 
-func (t *lmdbTopic) scanPartition(topic Topic, groupID string, msgs chan<- *[]byte) (int32, error) {
+func (t *lmdbTopic) scanPartition(groupID string, msgs chan<- *[]byte) (int32, error) {
 	var scanned int32
 	err := t.queueEnv.Update(func(txn *lmdb.Txn) error {
 		pOffset, err := t.persistedOffset(txn)

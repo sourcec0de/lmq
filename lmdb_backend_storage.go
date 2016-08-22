@@ -84,7 +84,7 @@ func (lbs *lmdbBackendStorage) PersistMessages(topic Topic, msgs []*Message) {
 }
 
 func (lbs *lmdbBackendStorage) ScanMessages(topic Topic, groupID string, msgs chan<- *[]byte) {
-	topic.(*lmdbTopic).scanMessages(topic, groupID, msgs)
+	topic.(*lmdbTopic).scanMessages(groupID, msgs)
 }
 
 func (lbs *lmdbBackendStorage) readerCheck() {

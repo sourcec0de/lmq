@@ -123,9 +123,9 @@ func (t *lmdbTopic) openPartitionForConsume(groupID string) {
 	}
 }
 
-func (t *lmdbTopic) scanMessages(topic Topic, groupID string, msgs chan<- *[]byte) {
+func (t *lmdbTopic) scanMessages(groupID string, msgs chan<- *[]byte) {
 	for {
-		fetchSize, eof := t.scanPartition(topic, groupID, msgs)
+		fetchSize, eof := t.scanPartition(groupID, msgs)
 		if (fetchSize == t.opt.fetchSize) || lmdb.IsNotFound(eof) {
 			runtime.Gosched()
 		}
