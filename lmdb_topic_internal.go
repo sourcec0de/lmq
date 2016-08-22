@@ -306,7 +306,10 @@ func (t *lmdbTopic) scanPartition(groupID string, msgs chan<- *[]byte) (int32, e
 }
 
 func (t *lmdbTopic) updateConsumeOffset(txn *lmdb.Txn, groupID string, offset uint64) {
-
+	keyConsumerStr := fmt.Sprintf("%s_%s", "consumer_head", groupID)
+	if err := txn.Put(t.ownerMetaDB, []byte(keyConsumerStr), uInt64ToBytes(offset), 0); err != nil {
+		log.Panicln("Update consume offset failed: ", err)
+	}
 }
 
 func (t *lmdbTopic) rotateScanPartition() {
