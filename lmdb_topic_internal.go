@@ -2,6 +2,7 @@ package lmq
 
 import (
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/bmatsuo/lmdb-go/lmdb"
@@ -264,4 +265,50 @@ func (t *lmdbTopic) consumePartitionID(txn *lmdb.Txn, groupID string, searchFrom
 
 func (t *lmdbTopic) consumeOffset(txn *lmdb.Txn, groupID string) (uint64, error) {
 	return 0, nil
+}
+
+func (t *lmdbTopic) scanPartition(topic Topic, groupID string, msgs chan<- *[]byte) (int32, error) {
+	var scanned int32
+	err := t.queueEnv.Update(func(txn *lmdb.Txn) error {
+		pOffset, err := t.persistedOffset(txn)
+		if err != nil {
+			return err
+		}
+		cOffset, err := t.consumeOffset(txn, groupID)
+		if err != nil {
+			return err
+		}
+		if pOffset-cOffset == 1 || pOffset == 0 {
+			return nil
+		}
+		k, v, err := t.cursor.Get(uInt64ToBytes(cOffset), nil, lmdb.SetRange)
+		offset := bytesToUInt64(k)
+		for ; err == nil && scanned < t.opt.fetchSize; scanned++ {
+			msgs <- &v
+			k, v, err = t.cursor.Get(nil, nil, lmdb.Next)
+			if err != nil && lmdb.IsNotFound(err) {
+				break
+			}
+			offset = bytesToUInt64(k)
+		}
+		if offset > 0 {
+			t.updateConsumeOffset(txn, groupID, offset+1)
+		}
+		if lmdb.IsNotFound(err) {
+			return nil
+		}
+		return err
+	})
+	if err != nil {
+		log.Fatalln("Scan partition failed: ", err)
+	}
+	return scanned, err
+}
+
+func (t *lmdbTopic) updateConsumeOffset(txn *lmdb.Txn, groupID string, offset uint64) {
+
+}
+
+func (t *lmdbTopic) rotateScanPartition() {
+
 }
