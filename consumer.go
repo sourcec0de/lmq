@@ -80,6 +80,6 @@ func (c *consumer) addChild(child *topicConsumer) {
 	c.children = append(c.children, child)
 }
 
-func (child *topicConsumer) readMessages() {
-	child.consumer.queue.ReadMessages(child.topic, child.messages)
+func (tc *topicConsumer) readMessages() {
+	tc.consumer.queue.ReadMessages(tc.topic, tc.consumer.groupID, tc.messages)
 }
