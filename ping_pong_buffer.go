@@ -5,6 +5,8 @@ import (
 	"time"
 )
 
+// PingPongBuffer keep a pair of ping/pong buffers, one full will trigger
+// flush (in another goroutine) and switch to the other one to keep receive data.
 type PingPongBuffer struct {
 	cache0       []*Message
 	cache1       []*Message
@@ -20,6 +22,10 @@ type PingPongBuffer struct {
 	handler func(msgs []*Message)
 }
 
+// NewPingPongBuffer creates a new PingPongBuffer using the given option.
+// exitChan: when close, notify flush goroutine to exit.
+// size: set ping pong buffer internal cache size.
+// handler: when cache full, flush goroutine will push data to handler.
 func NewPingPongBuffer(exitChan <-chan int, size int, flushInterval time.Duration, handler func(msgs []*Message)) *PingPongBuffer {
 	ppb := &PingPongBuffer{
 		cache0:         make([]*Message, size),
@@ -34,6 +40,9 @@ func NewPingPongBuffer(exitChan <-chan int, size int, flushInterval time.Duratio
 	return ppb
 }
 
+// Put receive msg to internal cache. when full,
+// will notify flush goroutine to push data to hadnler,
+// and switch to another cache to keep on receiving.
 func (ppb *PingPongBuffer) Put(msg *Message) {
 	ppb.Lock()
 	defer ppb.Unlock()
@@ -45,6 +54,9 @@ func (ppb *PingPongBuffer) Put(msg *Message) {
 	}
 }
 
+// Flush runs in different goroutine with Put,
+// listen flush event, when event is triggered,
+// push msgs to hadnler and switch internal cache.
 func (ppb *PingPongBuffer) Flush() {
 	flushTicker := time.NewTicker(ppb.flushInterval)
 
