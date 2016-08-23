@@ -35,9 +35,6 @@ func NewLmdbBackendStorage(opt *Options) (BackendStorage, error) {
 	if err = env.Open(envPath, lmdb.NoSync|lmdb.NoSubdir, 0644); err != nil {
 		return nil, err
 	}
-	if _, err := env.ReaderCheck(); err != nil {
-		return nil, err
-	}
 	lbs := &lmdbBackendStorage{
 		env: env,
 	}
