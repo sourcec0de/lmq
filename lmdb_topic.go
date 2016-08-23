@@ -105,7 +105,7 @@ func (t *lmdbTopic) persistMessages(msgs []*Message) {
 		panic(err)
 	}
 	if isFull {
-		t.persistRotate()
+		t.rotatePersistPartition()
 		t.persistMessages(msgs)
 	}
 }

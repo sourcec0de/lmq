@@ -107,7 +107,7 @@ func (t *lmdbTopic) updatePersistOffset(txn *lmdb.Txn, offset uint64) error {
 	return txn.Put(t.ownerMetaDB, []byte("producer_head"), uInt64ToBytes(offset+1), 0)
 }
 
-func (t *lmdbTopic) persistRotate() {
+func (t *lmdbTopic) rotatePersistPartition() {
 	err := t.queueEnv.Update(func(txn *lmdb.Txn) error {
 		if err := t.closeCurrentPersistPartition(); err != nil {
 			return err
