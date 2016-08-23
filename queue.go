@@ -3,12 +3,10 @@ package lmq
 import "sync"
 
 type Queue interface {
-	Open(opt *Options) error
 	Option() *Options
 	OpenTopic(topic, groupID string, flag int) (Topic, error)
 	PutMessages(topic Topic, msgs []*Message)
 	ReadMessages(topic Topic, groupID string, msgs chan<- *[]byte)
-	Close() error
 }
 
 var (
@@ -61,10 +59,6 @@ func NewQueue(opt *Options) (Queue, error) {
 	return q, nil
 }
 
-func (q *queue) Open(opt *Options) error {
-	return nil
-}
-
 func (q *queue) Option() *Options {
 	return q.opt
 }
@@ -79,8 +73,4 @@ func (q *queue) PutMessages(topic Topic, msgs []*Message) {
 
 func (q *queue) ReadMessages(topic Topic, groupID string, msgs chan<- *[]byte) {
 	q.backendStorage.ScanMessages(topic, groupID, msgs)
-}
-
-func (q *queue) Close() error {
-	return nil
 }
