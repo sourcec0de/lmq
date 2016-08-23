@@ -2,6 +2,7 @@ package lmq
 
 import "sync"
 
+// Queue manages topics
 type Queue interface {
 	Option() *Options
 	OpenTopic(topic, groupID string, flag int) (Topic, error)
@@ -21,6 +22,7 @@ type queue struct {
 	backendStorage BackendStorage
 }
 
+// NewQueue creates a new Queue using the given option.
 func NewQueue(opt *Options) (Queue, error) {
 	queueManager.RLock()
 	q, ok := queueManager.queueMap[opt.DataPath]
