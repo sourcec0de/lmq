@@ -20,6 +20,7 @@ type lmdbBackendStorage struct {
 	waitGroup WaitGroupWrapper
 }
 
+// NewLmdbBackendStorage creates a new BackendStorage(using lmdb) using the given option.
 func NewLmdbBackendStorage(opt *Options) (BackendStorage, error) {
 	env, err := lmdb.NewEnv()
 	if err != nil {
@@ -36,7 +37,10 @@ func NewLmdbBackendStorage(opt *Options) (BackendStorage, error) {
 		return nil, err
 	}
 	lbs := &lmdbBackendStorage{
-		env: env,
+		env:      env,
+		topic:    make(map[string]*lmdbTopic),
+		opt:      opt,
+		exitChan: make(chan int, 0),
 	}
 	lbs.waitGroup.Wrap(func() { lbs.readerCheck() })
 	return lbs, nil
