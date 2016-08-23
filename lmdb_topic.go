@@ -39,6 +39,8 @@ func newLmdbTopic(name string, queueEvn *lmdb.Env, opt *Options) *lmdbTopic {
 		partitionID:     0,
 		env:             nil,
 		partitionDB:     0,
+		cursor:          nil,
+		rtxn:            nil,
 	}
 }
 
