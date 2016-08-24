@@ -21,12 +21,14 @@ type lmdbTopic struct {
 
 	ownerMetaDB     lmdb.DBI
 	partitionMetaDB lmdb.DBI
-	partitionID     uint64
+	loading         chan int
 
 	env         *lmdb.Env
+	partitionID uint64
 	partitionDB lmdb.DBI
 	cursor      *lmdb.Cursor
 	rtxn        *lmdb.Txn
+	inFlight    chan int
 }
 
 func newLmdbTopic(name string, queueEvn *lmdb.Env, opt *Options) *lmdbTopic {
@@ -36,15 +38,18 @@ func newLmdbTopic(name string, queueEvn *lmdb.Env, opt *Options) *lmdbTopic {
 		queueEnv:        queueEvn,
 		ownerMetaDB:     0,
 		partitionMetaDB: 0,
-		partitionID:     0,
+		loading:         make(chan int, 1),
 		env:             nil,
+		partitionID:     0,
 		partitionDB:     0,
 		cursor:          nil,
 		rtxn:            nil,
+		inFlight:        make(chan int, 1),
 	}
 }
 
 func (t *lmdbTopic) loadMeta(txn *lmdb.Txn) error {
+	t.loading <- 1
 	ownerMetaDBName := fmt.Sprintf("%s-%s", t.opt.Name, "ownerMeta")
 	ownerMetaDB, err := txn.CreateDBI(ownerMetaDBName)
 	if err != nil {
@@ -68,7 +73,11 @@ func (t *lmdbTopic) loadMeta(txn *lmdb.Txn) error {
 	}
 	t.partitionMetaDB = partitionMetaDB
 	initPartitionID := initOffset
-	return txn.Put(t.partitionMetaDB, initPartitionID, initOffset, lmdb.NoOverwrite)
+	err = txn.Put(t.partitionMetaDB, initPartitionID, initOffset, lmdb.NoOverwrite)
+
+	<-t.loading
+
+	return err
 }
 
 func (t *lmdbTopic) openPartitionForPersist() {
@@ -134,5 +143,13 @@ func (t *lmdbTopic) scanMessages(groupID string, msgs chan<- *[]byte) {
 		if lmdb.IsNotFound(eof) {
 			t.rotateScanPartition(groupID)
 		}
+	}
+}
+
+func (t *lmdbTopic) close() {
+	t.loading <- 1
+	t.inFlight <- 1
+	if err := t.env.Close(); err != nil {
+		log.Fatalln("Close lmdbTopic failed: ", err)
 	}
 }

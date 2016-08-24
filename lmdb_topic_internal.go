@@ -90,6 +90,7 @@ func (t *lmdbTopic) persistedOffset(txn *lmdb.Txn) (uint64, error) {
 }
 
 func (t *lmdbTopic) persistToPartitionDB(offset uint64, msgs []*Message) (uint64, error) {
+	t.inFlight <- 1
 	err := t.env.Update(func(txn *lmdb.Txn) error {
 		for _, v := range msgs {
 			offset++
@@ -100,6 +101,7 @@ func (t *lmdbTopic) persistToPartitionDB(offset uint64, msgs []*Message) (uint64
 		}
 		return nil
 	})
+	<-t.inFlight
 	return offset, err
 }
 
