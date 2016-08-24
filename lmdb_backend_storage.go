@@ -3,16 +3,13 @@ package lmq
 import (
 	"fmt"
 	"log"
-	"sync"
 	"time"
 
 	"github.com/bmatsuo/lmdb-go/lmdb"
 )
 
 type lmdbBackendStorage struct {
-	env   *lmdb.Env
-	topic map[string]*lmdbTopic
-	sync.RWMutex
+	env *lmdb.Env
 
 	opt *Options
 
@@ -38,7 +35,6 @@ func NewLmdbBackendStorage(opt *Options) (BackendStorage, error) {
 	}
 	lbs := &lmdbBackendStorage{
 		env:      env,
-		topic:    make(map[string]*lmdbTopic),
 		opt:      opt,
 		exitChan: make(chan int, 0),
 	}
@@ -47,26 +43,10 @@ func NewLmdbBackendStorage(opt *Options) (BackendStorage, error) {
 }
 
 func (lbs *lmdbBackendStorage) OpenTopic(topic, groupID string, flag int) (Topic, error) {
-	lbs.RLock()
-	t, ok := lbs.topic[topic]
-	lbs.RUnlock()
-	if ok {
-		return t, nil
-	}
-
-	lbs.Lock()
-
-	t, ok = lbs.topic[topic]
-	if ok {
-		return t, nil
-	}
-
-	t = newLmdbTopic(topic, lbs.env, lbs.opt)
+	t := newLmdbTopic(topic, lbs.env, lbs.opt)
 	err := lbs.env.Update(func(txn *lmdb.Txn) error {
 		return t.loadMeta(txn)
 	})
-	lbs.topic[topic] = t
-	lbs.Unlock()
 
 	switch flag {
 	case 0:
