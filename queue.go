@@ -7,6 +7,7 @@ type Queue interface {
 	PutMessages(topic Topic, msgs []*Message)
 	ReadMessages(topic Topic, groupID string, msgs chan<- *[]byte)
 	CloseTopic(topic Topic)
+	Close()
 }
 
 type queue struct {
@@ -55,4 +56,8 @@ func (q *queue) ReadMessages(topic Topic, groupID string, msgs chan<- *[]byte) {
 
 func (q *queue) CloseTopic(topic Topic) {
 	q.backendStorage.CloseTopic(topic)
+}
+
+func (q *queue) Close() {
+	q.backendStorage.Close()
 }
