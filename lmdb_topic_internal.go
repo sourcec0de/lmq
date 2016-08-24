@@ -250,7 +250,24 @@ func (t *lmdbTopic) consumePartitionID(txn *lmdb.Txn, groupID string, searchFrom
 }
 
 func (t *lmdbTopic) consumeOffset(txn *lmdb.Txn, groupID string) uint64 {
-	return 0
+	keyConsumserStr := fmt.Sprintf("%s_%s", "consumer_head", groupID)
+	offsetBuf, err := txn.Get(t.ownerMetaDB, []byte(keyConsumserStr))
+	if err == nil {
+		offset := bytesToUInt64(offsetBuf)
+		return offset
+	}
+	if !lmdb.IsNotFound(err) {
+		log.Fatalln("Get consume offset failed: ", err)
+	}
+	cursor, err := txn.OpenCursor(t.partitionMetaDB)
+	if err != nil {
+		log.Fatalln("Get consume offset failed: ", err)
+	}
+	_, offsetBuf, err = cursor.Get(nil, nil, lmdb.First)
+	if err != nil {
+		log.Fatalln("Get consume offset failed: ", err)
+	}
+	return bytesToUInt64(offsetBuf)
 }
 
 func (t *lmdbTopic) scanPartition(groupID string, msgs chan<- *[]byte) (int32, bool) {
