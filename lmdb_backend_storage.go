@@ -81,3 +81,7 @@ func (lbs *lmdbBackendStorage) readerCheck() {
 exit:
 	checkTicker.Stop()
 }
+
+func (lbs *lmdbBackendStorage) CloseTopic(topic Topic) {
+	topic.(*lmdbTopic).close()
+}
