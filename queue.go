@@ -3,7 +3,7 @@ package lmq
 // Queue manages topics
 type Queue interface {
 	Option() *Options
-	OpenTopic(topic, groupID string, flag int) (Topic, error)
+	OpenTopic(topic, groupID string, flag int) Topic
 	PutMessages(topic Topic, msgs []*Message)
 	ReadMessages(topic Topic, groupID string, msgs chan<- *[]byte)
 	CloseTopic(topic Topic)
@@ -42,7 +42,7 @@ func (q *queue) Option() *Options {
 	return q.opt
 }
 
-func (q *queue) OpenTopic(topic, groupID string, flag int) (Topic, error) {
+func (q *queue) OpenTopic(topic, groupID string, flag int) Topic {
 	return q.backendStorage.OpenTopic(topic, groupID, flag)
 }
 

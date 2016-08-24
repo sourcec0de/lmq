@@ -50,15 +50,10 @@ type topicConsumer struct {
 }
 
 func (c *consumer) ConsumeTopic(topic string, offset uint64) (TopicConsumer, error) {
-	t, err := c.openTopic(topic)
-	if err != nil {
-		return nil, err
-	}
-
 	child := &topicConsumer{
 		consumer:  c,
 		messages:  make(chan *[]byte, c.opt.Topics[topic].BufferSize),
-		topic:     t,
+		topic:     c.openTopic(topic),
 		fetchSize: c.opt.Topics[topic].fetchSize,
 	}
 
@@ -69,7 +64,7 @@ func (c *consumer) ConsumeTopic(topic string, offset uint64) (TopicConsumer, err
 	return child, nil
 }
 
-func (c *consumer) openTopic(topic string) (Topic, error) {
+func (c *consumer) openTopic(topic string) Topic {
 	return c.queue.OpenTopic(topic, c.groupID, 1)
 }
 

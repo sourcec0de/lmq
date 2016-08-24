@@ -109,12 +109,7 @@ type topicProducer struct {
 func (p *asyncProducer) newTopicProducer(topic string) chan<- *ProducerMessage {
 	tp := &topicProducer{parent: p}
 
-	t, err := tp.openTopic(topic)
-	if err != nil {
-		tp.parent.shutdown()
-		return nil
-	}
-	tp.topic = t
+	tp.topic = tp.openTopic(topic)
 
 	topicOption := p.opt.Topics[topic]
 	bufferSize := topicOption.BufferSize
@@ -136,7 +131,7 @@ func (p *asyncProducer) newTopicProducer(topic string) chan<- *ProducerMessage {
 	return input
 }
 
-func (tp *topicProducer) openTopic(topic string) (Topic, error) {
+func (tp *topicProducer) openTopic(topic string) Topic {
 	return tp.parent.queue.OpenTopic(topic, "", 0)
 }
 
