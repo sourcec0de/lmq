@@ -51,36 +51,40 @@ func newLmdbTopic(name string, queueEvn *lmdb.Env, opt *Options) *lmdbTopic {
 	}
 }
 
-func (t *lmdbTopic) loadMeta(txn *lmdb.Txn) error {
+func (t *lmdbTopic) loadMeta(txn *lmdb.Txn) {
 	t.loading <- 1
+
 	ownerMetaDBName := fmt.Sprintf("%s-%s", t.opt.Name, "ownerMeta")
 	ownerMetaDB, err := txn.CreateDBI(ownerMetaDBName)
 	if err != nil {
-		return err
+		log.Fatalln("Load topic Meta failed: ", err)
+		return
 	}
 	t.ownerMetaDB = ownerMetaDB
 	initOffset := uInt64ToBytes(0)
 	err = txn.Put(ownerMetaDB, []byte("producer_head"), initOffset, lmdb.NoOverwrite)
 	if err != nil {
 		if err, ok := err.(*lmdb.OpError); ok {
-			if err.Errno == lmdb.KeyExist {
-				return nil
+			if err.Errno != lmdb.KeyExist {
+				log.Fatalln("Load topic Meta failed: ", err)
+				return
 			}
-			return err
 		}
 	}
 	partitionMetaDBName := fmt.Sprintf("%s-%s", t.opt.Name, "partitionMeta")
 	partitionMetaDB, err := txn.CreateDBI(partitionMetaDBName)
 	if err != nil {
-		return err
+		log.Fatalln("Load topic Meta failed: ", err)
+		return
 	}
 	t.partitionMetaDB = partitionMetaDB
 	initPartitionID := initOffset
-	err = txn.Put(t.partitionMetaDB, initPartitionID, initOffset, lmdb.NoOverwrite)
+	if err = txn.Put(t.partitionMetaDB, initPartitionID, initOffset, lmdb.NoOverwrite); err != nil {
+		log.Fatalln("Load topic Meta failed: ", err)
+		return
+	}
 
 	<-t.loading
-
-	return err
 }
 
 func (t *lmdbTopic) openPartitionForPersist() {

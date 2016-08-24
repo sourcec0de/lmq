@@ -42,10 +42,11 @@ func NewLmdbBackendStorage(opt *Options) (BackendStorage, error) {
 	return lbs, nil
 }
 
-func (lbs *lmdbBackendStorage) OpenTopic(topic, groupID string, flag int) (Topic, error) {
+func (lbs *lmdbBackendStorage) OpenTopic(topic, groupID string, flag int) Topic {
 	t := newLmdbTopic(topic, lbs.env, lbs.opt)
 	err := lbs.env.Update(func(txn *lmdb.Txn) error {
-		return t.loadMeta(txn)
+		t.loadMeta(txn)
+		return nil
 	})
 
 	switch flag {
@@ -57,7 +58,7 @@ func (lbs *lmdbBackendStorage) OpenTopic(topic, groupID string, flag int) (Topic
 		log.Fatalf("Open topic faild: unvaild %d flag", flag)
 	}
 
-	return t, err
+	return t
 }
 
 func (lbs *lmdbBackendStorage) PersistMessages(topic Topic, msgs []*Message) {
