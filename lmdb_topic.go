@@ -58,7 +58,6 @@ func (t *lmdbTopic) loadMeta(txn *lmdb.Txn) {
 	ownerMetaDB, err := txn.CreateDBI(ownerMetaDBName)
 	if err != nil {
 		log.Fatalln("Load topic Meta failed: ", err)
-		return
 	}
 	t.ownerMetaDB = ownerMetaDB
 	initOffset := uInt64ToBytes(0)
@@ -67,7 +66,6 @@ func (t *lmdbTopic) loadMeta(txn *lmdb.Txn) {
 		if err, ok := err.(*lmdb.OpError); ok {
 			if err.Errno != lmdb.KeyExist {
 				log.Fatalln("Load topic Meta failed: ", err)
-				return
 			}
 		}
 	}
@@ -75,13 +73,11 @@ func (t *lmdbTopic) loadMeta(txn *lmdb.Txn) {
 	partitionMetaDB, err := txn.CreateDBI(partitionMetaDBName)
 	if err != nil {
 		log.Fatalln("Load topic Meta failed: ", err)
-		return
 	}
 	t.partitionMetaDB = partitionMetaDB
 	initPartitionID := initOffset
 	if err = txn.Put(t.partitionMetaDB, initPartitionID, initOffset, lmdb.NoOverwrite); err != nil {
 		log.Fatalln("Load topic Meta failed: ", err)
-		return
 	}
 
 	<-t.loading
@@ -89,10 +85,7 @@ func (t *lmdbTopic) loadMeta(txn *lmdb.Txn) {
 
 func (t *lmdbTopic) openPartitionForPersist() {
 	err := t.queueEnv.Update(func(txn *lmdb.Txn) error {
-		partitionID, err := t.choosePartitionForPersist(txn, false)
-		if err != nil {
-			return err
-		}
+		partitionID := t.choosePartitionForPersist(txn, false)
 		t.partitionID = partitionID
 		return t.openPersistPartitionDB(partitionID)
 	})
@@ -104,13 +97,11 @@ func (t *lmdbTopic) openPartitionForPersist() {
 func (t *lmdbTopic) persistMessages(msgs []*Message) {
 	isFull := false
 	err := t.queueEnv.Update(func(txn *lmdb.Txn) error {
-		offset, err := t.persistedOffset(txn)
+		offset := t.persistedOffset(txn)
+		offset, err := t.persistToPartitionDB(offset, msgs)
 		if err != nil {
-			return err
-		}
-		offset, err = t.persistToPartitionDB(offset, msgs)
-		if err != nil {
-			return t.updatePersistOffset(txn, offset)
+			t.updatePersistOffset(txn, offset)
+			return nil
 		}
 		return err
 	})
@@ -130,10 +121,7 @@ func (t *lmdbTopic) persistMessages(msgs []*Message) {
 
 func (t *lmdbTopic) openPartitionForConsume(groupID string) {
 	err := t.queueEnv.Update(func(txn *lmdb.Txn) error {
-		partitionID, err := t.choosePartitionForConsume(txn, groupID)
-		if err != nil {
-			return err
-		}
+		partitionID := t.choosePartitionForConsume(txn, groupID)
 		return t.openConsumePartitionDB(partitionID)
 	})
 	if err != nil {
@@ -144,10 +132,10 @@ func (t *lmdbTopic) openPartitionForConsume(groupID string) {
 func (t *lmdbTopic) scanMessages(groupID string, msgs chan<- *[]byte) {
 	for {
 		fetchSize, eof := t.scanPartition(groupID, msgs)
-		if (fetchSize == t.opt.fetchSize) || lmdb.IsNotFound(eof) {
+		if (fetchSize == t.opt.fetchSize) || eof {
 			runtime.Gosched()
 		}
-		if lmdb.IsNotFound(eof) {
+		if eof {
 			t.rotateScanPartition(groupID)
 		}
 	}
