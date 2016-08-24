@@ -149,7 +149,10 @@ func (p *asyncProducer) shutdown() {
 func (tp *topicProducer) putMessage() {
 	for {
 		select {
-		case pMsg := <-tp.input:
+		case pMsg, ok := <-tp.input:
+			if !ok {
+				goto exit
+			}
 			msg := NewMessage(pMsg.Body)
 			tp.ppb.Put(msg)
 		case <-tp.parent.exitChan:
@@ -157,4 +160,9 @@ func (tp *topicProducer) putMessage() {
 		}
 	}
 exit:
+	tp.closeTopic(tp.topic)
+}
+
+func (tp *topicProducer) closeTopic(topic Topic) {
+	tp.parent.queue.CloseTopic(topic)
 }
