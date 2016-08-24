@@ -32,7 +32,7 @@ type asyncProducer struct {
 
 	input chan *ProducerMessage
 
-	exitChan  chan int
+	exitChan  chan struct{}
 	waitGroup WaitGroupWrapper
 }
 
@@ -57,7 +57,7 @@ func NewAsyncProducerWithQueue(queue Queue) (AsyncProducer, error) {
 	p := &asyncProducer{
 		queue:    queue,
 		opt:      queue.Option(),
-		exitChan: make(chan int),
+		exitChan: make(chan struct{}),
 		input:    make(chan *ProducerMessage),
 	}
 
@@ -143,6 +143,7 @@ func (tp *topicProducer) openTopic(topic string) (Topic, error) {
 func (p *asyncProducer) shutdown() {
 	close(p.input)
 	close(p.exitChan)
+	p.queue.Close()
 	p.waitGroup.Wait()
 }
 

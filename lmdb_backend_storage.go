@@ -13,7 +13,7 @@ type lmdbBackendStorage struct {
 
 	opt *Options
 
-	exitChan  chan int
+	exitChan  chan struct{}
 	waitGroup WaitGroupWrapper
 }
 
@@ -36,7 +36,7 @@ func NewLmdbBackendStorage(opt *Options) (BackendStorage, error) {
 	lbs := &lmdbBackendStorage{
 		env:      env,
 		opt:      opt,
-		exitChan: make(chan int, 0),
+		exitChan: make(chan struct{}),
 	}
 	lbs.waitGroup.Wrap(func() { lbs.readerCheck() })
 	return lbs, nil
@@ -84,4 +84,11 @@ exit:
 
 func (lbs *lmdbBackendStorage) CloseTopic(topic Topic) {
 	topic.(*lmdbTopic).close()
+}
+
+func (lbs *lmdbBackendStorage) Close() {
+	close(lbs.exitChan)
+	if err := lbs.env.Close(); err != nil {
+		log.Fatalln("Close queue failed: ", err)
+	}
 }

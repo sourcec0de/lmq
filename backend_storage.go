@@ -5,4 +5,5 @@ type BackendStorage interface {
 	PersistMessages(topic Topic, msgs []*Message)
 	ScanMessages(topic Topic, groupID string, msgs chan<- *[]byte)
 	CloseTopic(topic Topic)
+	Close()
 }

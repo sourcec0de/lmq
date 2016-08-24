@@ -26,7 +26,7 @@ type PingPongBuffer struct {
 // exitChan: when close, notify flush goroutine to exit.
 // size: set ping pong buffer internal cache size.
 // handler: when cache full, flush goroutine will push data to handler.
-func NewPingPongBuffer(exitChan <-chan int, size int, flushInterval time.Duration, handler func(msgs []*Message)) *PingPongBuffer {
+func NewPingPongBuffer(exitChan <-chan struct{}, size int, flushInterval time.Duration, handler func(msgs []*Message)) *PingPongBuffer {
 	ppb := &PingPongBuffer{
 		cache0:         make([]*Message, size),
 		cache1:         make([]*Message, size),
