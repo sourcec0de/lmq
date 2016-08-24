@@ -208,6 +208,9 @@ func (t *lmdbTopic) openConsumePartitionDB(id uint64) error {
 	if _, err = env.ReaderCheck(); err != nil {
 		return err
 	}
+
+	t.waitGroup.Wrap(func() { t.readerCheck() })
+
 	err = env.View(func(txn *lmdb.Txn) error {
 		t.partitionDB, err = txn.CreateDBI(uInt64ToString(t.partitionID))
 		return err
