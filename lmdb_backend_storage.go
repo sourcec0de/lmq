@@ -44,10 +44,12 @@ func NewLmdbBackendStorage(opt *Options) (BackendStorage, error) {
 
 func (lbs *lmdbBackendStorage) OpenTopic(topic, groupID string, flag int) Topic {
 	t := newLmdbTopic(topic, lbs.env, lbs.opt)
-	err := lbs.env.Update(func(txn *lmdb.Txn) error {
+
+	loadTopicMeta := func(txn *lmdb.Txn) error {
 		t.loadMeta(txn)
 		return nil
-	})
+	}
+	_ = lbs.env.Update(loadTopicMeta)
 
 	switch flag {
 	case 0:
