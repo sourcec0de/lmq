@@ -1,7 +1,5 @@
 package lmq
 
-import "sync"
-
 // Queue manages topics
 type Queue interface {
 	Option() *Options
@@ -10,13 +8,6 @@ type Queue interface {
 	ReadMessages(topic Topic, groupID string, msgs chan<- *[]byte)
 }
 
-var (
-	queueManager struct {
-		sync.RWMutex
-		queueMap map[string]Queue
-	}
-)
-
 type queue struct {
 	opt            *Options
 	backendStorage BackendStorage
@@ -24,22 +15,7 @@ type queue struct {
 
 // NewQueue creates a new Queue using the given option.
 func NewQueue(opt *Options) (Queue, error) {
-	queueManager.RLock()
-	q, ok := queueManager.queueMap[opt.DataPath]
-	queueManager.RUnlock()
-	if ok {
-		return q, nil
-	}
-
-	queueManager.Lock()
-
-	q, ok = queueManager.queueMap[opt.DataPath]
-	if ok {
-		queueManager.Unlock()
-		return q, nil
-	}
-
-	q = &queue{
+	q := &queue{
 		opt: opt,
 	}
 
@@ -54,9 +30,8 @@ func NewQueue(opt *Options) (Queue, error) {
 	if err != nil {
 		return nil, err
 	}
-	q.(*queue).backendStorage = backendStorage
-	queueManager.queueMap[opt.DataPath] = q
-	queueManager.Unlock()
+
+	q.backendStorage = backendStorage
 
 	return q, nil
 }
