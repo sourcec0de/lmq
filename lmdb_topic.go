@@ -29,6 +29,9 @@ type lmdbTopic struct {
 	cursor      *lmdb.Cursor
 	rtxn        *lmdb.Txn
 	inFlight    chan int
+
+	exitChan  chan int
+	waitGroup WaitGroupWrapper
 }
 
 func newLmdbTopic(name string, queueEvn *lmdb.Env, opt *Options) *lmdbTopic {
@@ -149,7 +152,9 @@ func (t *lmdbTopic) scanMessages(groupID string, msgs chan<- *[]byte) {
 func (t *lmdbTopic) close() {
 	t.loading <- 1
 	t.inFlight <- 1
-	if err := t.env.Close(); err != nil {
-		log.Fatalln("Close lmdbTopic failed: ", err)
-	}
+	t.exitChan <- 1
+	t.waitGroup.Wait()
+	close(t.loading)
+	close(t.inFlight)
+	close(t.exitChan)
 }

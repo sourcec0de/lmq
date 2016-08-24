@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	"github.com/bmatsuo/lmdb-go/lmdb"
 )
@@ -74,6 +75,9 @@ func (t *lmdbTopic) openPersistPartitionDB(id uint64) error {
 		return err
 	}
 	t.env = env
+
+	t.waitGroup.Wrap(func() { t.readerCheck() })
+
 	return nil
 }
 
@@ -111,9 +115,7 @@ func (t *lmdbTopic) updatePersistOffset(txn *lmdb.Txn, offset uint64) error {
 
 func (t *lmdbTopic) rotatePersistPartition() {
 	err := t.queueEnv.Update(func(txn *lmdb.Txn) error {
-		if err := t.closeCurrentPersistPartition(); err != nil {
-			return err
-		}
+		t.closePartition()
 		count, err := t.countPartitions(txn)
 		if err != nil {
 			return err
@@ -133,11 +135,6 @@ func (t *lmdbTopic) rotatePersistPartition() {
 	if err != nil {
 		panic(err)
 	}
-}
-
-func (t *lmdbTopic) closeCurrentPersistPartition() error {
-	t.env.CloseDBI(t.partitionDB)
-	return t.env.Close()
 }
 
 func (t *lmdbTopic) countPartitions(txn *lmdb.Txn) (uint64, error) {
@@ -316,9 +313,7 @@ func (t *lmdbTopic) updateConsumeOffset(txn *lmdb.Txn, groupID string, offset ui
 
 func (t *lmdbTopic) rotateScanPartition(groupID string) {
 	err := t.queueEnv.Update(func(txn *lmdb.Txn) error {
-		if err := t.closePartition(); err != nil {
-			return err
-		}
+		t.closePartition()
 		partitionID, err := t.choosePartitionForConsume(txn, groupID)
 		if err != nil {
 			return err
@@ -330,7 +325,8 @@ func (t *lmdbTopic) rotateScanPartition(groupID string) {
 	}
 }
 
-func (t *lmdbTopic) closePartition() error {
+func (t *lmdbTopic) closePartition() {
+	t.exitChan <- 1
 	if t.cursor != nil {
 		t.cursor.Close()
 	}
@@ -338,5 +334,21 @@ func (t *lmdbTopic) closePartition() error {
 		t.rtxn.Abort()
 	}
 	t.env.CloseDBI(t.partitionDB)
-	return t.env.Close()
+	if err := t.env.Close(); err != nil {
+		log.Fatalln("Close partition failed: ", err)
+	}
+}
+
+func (t *lmdbTopic) readerCheck() {
+	checkTicker := time.NewTicker(time.Second)
+	for {
+		select {
+		case <-checkTicker.C:
+			_, _ = t.env.ReaderCheck()
+		case <-t.exitChan:
+			goto exit
+		}
+	}
+exit:
+	checkTicker.Stop()
 }
