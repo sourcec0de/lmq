@@ -28,8 +28,8 @@ type PingPongBuffer struct {
 // handler: when cache full, flush goroutine will push data to handler.
 func NewPingPongBuffer(exitChan <-chan struct{}, size int, flushInterval time.Duration, handler func(msgs []*Message)) *PingPongBuffer {
 	ppb := &PingPongBuffer{
-		cache0:         make([]*Message, size),
-		cache1:         make([]*Message, size),
+		cache0:         make([]*Message, 0, size),
+		cache1:         make([]*Message, 0, size),
 		flushThreshold: size,
 		bgFlush:        make(chan bool),
 		flushInterval:  flushInterval,
