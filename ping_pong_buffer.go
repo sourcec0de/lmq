@@ -45,11 +45,15 @@ func NewPingPongBuffer(exitChan <-chan struct{}, size int, flushInterval time.Du
 // and switch to another cache to keep on receiving.
 func (ppb *PingPongBuffer) Put(msg *Message) {
 	ppb.Lock()
-	defer ppb.Unlock()
+
 	*ppb.currentCache = append(*ppb.currentCache, msg)
 	if len(*ppb.currentCache) >= ppb.flushThreshold {
+		ppb.Unlock()
 		ppb.bgFlush <- true
+		return
 	}
+
+	ppb.Unlock()
 }
 
 // Flush runs in different goroutine with Put,
