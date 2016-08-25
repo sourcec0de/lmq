@@ -46,10 +46,8 @@ func NewPingPongBuffer(exitChan <-chan struct{}, size int, flushInterval time.Du
 func (ppb *PingPongBuffer) Put(msg *Message) {
 	ppb.Lock()
 	defer ppb.Unlock()
-
-	cache := *ppb.currentCache
-	cache = append(cache, msg)
-	if len(cache) >= ppb.flushThreshold {
+	*ppb.currentCache = append(*ppb.currentCache, msg)
+	if len(*ppb.currentCache) >= ppb.flushThreshold {
 		ppb.bgFlush <- true
 	}
 }
@@ -58,12 +56,11 @@ func (ppb *PingPongBuffer) Put(msg *Message) {
 // listen flush event, when event is triggered,
 // push msgs to hadnler and switch internal cache.
 func (ppb *PingPongBuffer) Flush() {
-	flushTicker := time.NewTicker(ppb.flushInterval)
+	// flushTicker := time.NewTicker(ppb.flushInterval)
 
 	for {
 		select {
 		case <-ppb.bgFlush:
-		case <-flushTicker.C:
 			ppb.Lock()
 			if len(*ppb.currentCache) > 0 {
 				flushCache := ppb.currentCache
@@ -78,13 +75,14 @@ func (ppb *PingPongBuffer) Flush() {
 			} else {
 				ppb.Unlock()
 			}
+		// case <-flushTicker.C:
 		case <-ppb.exitChan:
 			goto exit
 		}
 	}
 
 exit:
-	flushTicker.Stop()
+	// flushTicker.Stop()
 	ppb.cache0 = nil
 	ppb.cache1 = nil
 }
