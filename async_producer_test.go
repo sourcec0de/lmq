@@ -48,4 +48,18 @@ var _ = Describe("AsyncProducer", func() {
 			Expect(err).NotTo(HaveOccurred())
 		})
 	})
+
+	Context("when the JSON fails to parse", func() {
+		BeforeEach(func() {
+			opt.DataPath = "./invalid_data_path"
+		})
+
+		It("should return nil", func() {
+			Expect(aproducer).To(BeNil())
+		})
+
+		It("should error", func() {
+			Expect(err).To(HaveOccurred())
+		})
+	})
 })
