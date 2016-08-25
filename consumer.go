@@ -3,6 +3,8 @@ package lmq
 import "sync"
 
 type Consumer interface {
+	ConsumeTopic(topic string, offset uint64) (TopicConsumer, error)
+	Close()
 }
 
 type consumer struct {
@@ -13,6 +15,7 @@ type consumer struct {
 	sync.Mutex
 	children []*topicConsumer
 
+	exitChan  chan struct{}
 	waitGroup WaitGroupWrapper
 }
 
@@ -34,11 +37,16 @@ func NewConsumerWithQueue(queue Queue) (Consumer, error) {
 		queue:    queue,
 		opt:      queue.Option(),
 		children: make([]*topicConsumer, 0),
+		exitChan: make(chan struct{}),
 	}
 	return c, nil
 }
 
-type TopicConsumer interface{}
+type TopicConsumer interface {
+	Messages() <-chan *[]byte
+	Close()
+}
+
 type topicConsumer struct {
 	consumer *consumer
 	opt      *Options
@@ -47,6 +55,8 @@ type topicConsumer struct {
 	messages chan *[]byte
 
 	fetchSize int32
+
+	exitChan chan struct{}
 }
 
 func (c *consumer) ConsumeTopic(topic string, offset uint64) (TopicConsumer, error) {
@@ -55,6 +65,7 @@ func (c *consumer) ConsumeTopic(topic string, offset uint64) (TopicConsumer, err
 		messages:  make(chan *[]byte, c.opt.Topics[topic].BufferSize),
 		topic:     c.openTopic(topic),
 		fetchSize: c.opt.Topics[topic].fetchSize,
+		exitChan:  make(chan struct{}),
 	}
 
 	c.addChild(child)
@@ -62,6 +73,11 @@ func (c *consumer) ConsumeTopic(topic string, offset uint64) (TopicConsumer, err
 	c.waitGroup.Wrap(func() { child.readMessages() })
 
 	return child, nil
+}
+
+func (c *consumer) Close() {
+	close(c.exitChan)
+	c.waitGroup.Wait()
 }
 
 func (c *consumer) openTopic(topic string) Topic {
@@ -76,5 +92,23 @@ func (c *consumer) addChild(child *topicConsumer) {
 }
 
 func (tc *topicConsumer) readMessages() {
-	tc.consumer.queue.ReadMessages(tc.topic, tc.consumer.groupID, tc.messages)
+	for {
+		select {
+		case <-tc.consumer.exitChan:
+		case <-tc.exitChan:
+			goto exit
+		default:
+			tc.consumer.queue.ReadMessages(tc.topic, tc.consumer.groupID, tc.messages)
+		}
+	}
+exit:
+	close(tc.messages)
+}
+
+func (tc *topicConsumer) Messages() <-chan *[]byte {
+	return tc.messages
+}
+
+func (tc *topicConsumer) Close() {
+	close(tc.exitChan)
 }
