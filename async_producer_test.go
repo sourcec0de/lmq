@@ -39,7 +39,7 @@ var _ = Describe("AsyncProducer", func() {
 		aproducer, err = NewAsyncProducer(opt)
 	})
 
-	Context("when the async_producer creates succesfully", func() {
+	Context("when the aproducer creates succesfully", func() {
 		It("should be an AsyncProducer object", func() {
 			Expect(reflect.TypeOf(aproducer).String()).To(Equal("*lmq.asyncProducer"))
 		})
@@ -49,7 +49,7 @@ var _ = Describe("AsyncProducer", func() {
 		})
 	})
 
-	Context("when the JSON fails to parse", func() {
+	Context("when fails to create aproducer", func() {
 		BeforeEach(func() {
 			opt.DataPath = "./invalid_data_path"
 		})
