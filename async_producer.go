@@ -76,7 +76,7 @@ func (p *asyncProducer) dispatch() {
 		select {
 		case pMsg, ok := <-p.input:
 			if !ok {
-				continue
+				goto exit
 			}
 			handler := handlers[pMsg.Topic]
 			if handler == nil {
@@ -145,8 +145,8 @@ func (tp *topicProducer) openTopic(topic string) Topic {
 func (p *asyncProducer) shutdown() {
 	close(p.input)
 	close(p.exitChan)
-	p.queue.Close()
 	p.waitGroup.Wait()
+	p.queue.Close()
 }
 
 func (tp *topicProducer) putMessage() {
