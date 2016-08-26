@@ -1,9 +1,6 @@
 package lmq
 
-import (
-	"log"
-	"time"
-)
+import "time"
 
 // ProducerMessage is the collection of elements passed to the Producer in order to send a message.
 type ProducerMessage struct {
@@ -96,7 +93,6 @@ exit:
 }
 
 func (p *asyncProducer) Close() {
-	log.Println("asyncProducer Begin closing: ", time.Now())
 	p.shutdown()
 }
 
