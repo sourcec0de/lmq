@@ -64,6 +64,7 @@ func (t *lmdbTopic) loadMeta(txn *lmdb.Txn) {
 			if err.Errno != lmdb.KeyExist {
 				log.Fatalln("Load topic Meta failed: ", err)
 			}
+			return
 		}
 	}
 	partitionMetaDBName := fmt.Sprintf("%s-%s", t.opt.Name, "partitionMeta")
