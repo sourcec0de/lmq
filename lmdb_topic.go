@@ -94,7 +94,7 @@ func (t *lmdbTopic) persistMessages(msgs []*Message) {
 	err := t.queueEnv.Update(func(txn *lmdb.Txn) error {
 		offset := t.persistedOffset(txn)
 		offset, err := t.persistToPartitionDB(offset, msgs)
-		if err != nil {
+		if err == nil {
 			t.updatePersistOffset(txn, offset)
 			return nil
 		}
