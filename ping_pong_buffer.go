@@ -17,7 +17,7 @@ type PingPongBuffer struct {
 	bgFlush        chan bool
 	flushInterval  time.Duration
 
-	exitChan chan int
+	exitChan <-chan struct{}
 
 	handler func(msgs []*Message)
 }
@@ -34,6 +34,7 @@ func NewPingPongBuffer(exitChan <-chan struct{}, flushThreshold int, flushInterv
 		flushThreshold: flushThreshold,
 		bgFlush:        make(chan bool),
 		flushInterval:  flushInterval,
+		exitChan:       exitChan,
 		handler:        handler,
 	}
 	ppb.currentCache = &ppb.cache0
