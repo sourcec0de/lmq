@@ -21,7 +21,6 @@ type lmdbTopic struct {
 
 	ownerMetaDB     lmdb.DBI
 	partitionMetaDB lmdb.DBI
-	loading         chan int
 
 	env         *lmdb.Env
 	partitionID uint64
@@ -41,7 +40,6 @@ func newLmdbTopic(name string, queueEvn *lmdb.Env, opt *Options) *lmdbTopic {
 		queueEnv:        queueEvn,
 		ownerMetaDB:     0,
 		partitionMetaDB: 0,
-		loading:         make(chan int, 1),
 		env:             nil,
 		partitionID:     0,
 		partitionDB:     0,
@@ -53,8 +51,6 @@ func newLmdbTopic(name string, queueEvn *lmdb.Env, opt *Options) *lmdbTopic {
 }
 
 func (t *lmdbTopic) loadMeta(txn *lmdb.Txn) {
-	t.loading <- 1
-
 	ownerMetaDBName := fmt.Sprintf("%s-%s", t.opt.Name, "ownerMeta")
 	ownerMetaDB, err := txn.CreateDBI(ownerMetaDBName)
 	if err != nil {
@@ -80,8 +76,6 @@ func (t *lmdbTopic) loadMeta(txn *lmdb.Txn) {
 	if err = txn.Put(t.partitionMetaDB, initPartitionID, initOffset, lmdb.NoOverwrite); err != nil {
 		log.Fatalln("Load topic Meta failed: ", err)
 	}
-
-	<-t.loading
 }
 
 func (t *lmdbTopic) openPartitionForPersist() {
@@ -141,11 +135,9 @@ func (t *lmdbTopic) scanMessages(groupID string, msgs chan<- *[]byte) {
 }
 
 func (t *lmdbTopic) close() {
-	t.loading <- 1
 	t.inFlight <- 1
 	t.exitChan <- 1
 	t.waitGroup.Wait()
-	close(t.loading)
 	close(t.inFlight)
 	close(t.exitChan)
 }
