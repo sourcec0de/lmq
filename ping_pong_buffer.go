@@ -77,6 +77,10 @@ func (ppb *PingPongBuffer) Flush() {
 
 exit:
 	flushTicker.Stop()
+
+	ppb.Lock()
+	defer ppb.Unlock()
+
 	ppb.cache0 = nil
 	ppb.cache1 = nil
 }
