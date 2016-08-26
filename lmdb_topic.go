@@ -48,6 +48,7 @@ func newLmdbTopic(name string, queueEvn *lmdb.Env, opt *Options) *lmdbTopic {
 		cursor:          nil,
 		rtxn:            nil,
 		inFlight:        make(chan int, 1),
+		exitChan:        make(chan int, 1),
 	}
 }
 
