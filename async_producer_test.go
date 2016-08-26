@@ -12,9 +12,11 @@ import (
 
 var _ = Describe("AsyncProducer", func() {
 	var (
-		aproducer AsyncProducer
-		err       error
-		opt       *Options
+		aproducer   AsyncProducer
+		err         error
+		topicName   string
+		opt         *Options
+		topicOption TopicOption
 	)
 
 	BeforeEach(func() {
@@ -24,12 +26,12 @@ var _ = Describe("AsyncProducer", func() {
 			Topics:         make(map[string]TopicOption),
 			BackendStorage: "Lmdb",
 		}
-		topicName := "log"
-		topicOption := TopicOption{
+		topicName = "log"
+		topicOption = TopicOption{
 			Name:                topicName,
 			MaxBytesPerFile:     2 * 1024 * 1024,
 			MaxDataFiles:        4,
-			BufferSize:          100,
+			BufferSize:          40,
 			BufferFlushInterval: 2 * time.Millisecond,
 		}
 		opt.Topics[topicName] = topicOption
@@ -46,6 +48,22 @@ var _ = Describe("AsyncProducer", func() {
 
 		It("should not error", func() {
 			Expect(err).NotTo(HaveOccurred())
+		})
+
+		Context("when publish data to 'log' topic", func() {
+			Context("always publish because full cache", func() {
+				It("should publish succesfully (full cache)", func() {
+					pm := &ProducerMessage{
+						Topic:     "log",
+						Body:      []byte("hello lmq with cache full"),
+						Timestamp: time.Now(),
+					}
+					for i := 0; i < 100000; i++ {
+						aproducer.Input() <- pm
+					}
+					aproducer.Close()
+				})
+			})
 		})
 	})
 
