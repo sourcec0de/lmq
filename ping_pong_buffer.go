@@ -60,33 +60,38 @@ func (ppb *PingPongBuffer) Put(msg *Message) {
 // listen flush event, when event is triggered,
 // push msgs to hadnler and switch internal cache.
 func (ppb *PingPongBuffer) Flush() {
-	// flushTicker := time.NewTicker(ppb.flushInterval)
+	flushTicker := time.NewTicker(ppb.flushInterval)
 
 	for {
 		select {
 		case <-ppb.bgFlush:
-			ppb.Lock()
-			if len(*ppb.currentCache) > 0 {
-				flushCache := ppb.currentCache
-				if ppb.currentCache == &ppb.cache0 {
-					ppb.currentCache = &ppb.cache1
-				} else {
-					ppb.currentCache = &ppb.cache0
-				}
-				ppb.Unlock()
-				ppb.handler(*flushCache)
-				*flushCache = nil
-			} else {
-				ppb.Unlock()
-			}
-		// case <-flushTicker.C:
+			ppb.swithAndFlush()
+		case <-flushTicker.C:
+			ppb.swithAndFlush()
 		case <-ppb.exitChan:
 			goto exit
 		}
 	}
 
 exit:
-	// flushTicker.Stop()
+	flushTicker.Stop()
 	ppb.cache0 = nil
 	ppb.cache1 = nil
+}
+
+func (ppb *PingPongBuffer) swithAndFlush() {
+	ppb.Lock()
+	if len(*ppb.currentCache) > 0 {
+		flushCache := ppb.currentCache
+		if ppb.currentCache == &ppb.cache0 {
+			ppb.currentCache = &ppb.cache1
+		} else {
+			ppb.currentCache = &ppb.cache0
+		}
+		ppb.Unlock()
+		ppb.handler(*flushCache)
+		*flushCache = nil
+	} else {
+		ppb.Unlock()
+	}
 }
