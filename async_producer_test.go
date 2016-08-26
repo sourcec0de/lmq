@@ -61,7 +61,7 @@ var _ = Describe("AsyncProducer", func() {
 					for i := 0; i < 100000; i++ {
 						aproducer.Input() <- pm
 					}
-					aproducer.Close()
+					// aproducer.Close()
 				})
 			})
 		})
