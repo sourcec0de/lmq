@@ -51,6 +51,7 @@ func newLmdbTopic(name string, queueEvn *lmdb.Env, opt *Options) *lmdbTopic {
 }
 
 func (t *lmdbTopic) loadMeta(txn *lmdb.Txn) {
+	partitionMetaInited := false
 	ownerMetaDBName := fmt.Sprintf("%s-%s", t.opt.Name, "ownerMeta")
 	ownerMetaDB, err := txn.CreateDBI(ownerMetaDBName)
 	if err != nil {
@@ -64,7 +65,7 @@ func (t *lmdbTopic) loadMeta(txn *lmdb.Txn) {
 			if err.Errno != lmdb.KeyExist {
 				log.Fatalln("Load topic Meta failed: ", err)
 			}
-			return
+			partitionMetaInited = true
 		}
 	}
 	partitionMetaDBName := fmt.Sprintf("%s-%s", t.opt.Name, "partitionMeta")
@@ -73,9 +74,11 @@ func (t *lmdbTopic) loadMeta(txn *lmdb.Txn) {
 		log.Fatalln("Load topic Meta failed: ", err)
 	}
 	t.partitionMetaDB = partitionMetaDB
-	initPartitionID := initOffset
-	if err = txn.Put(t.partitionMetaDB, initPartitionID, initOffset, lmdb.NoOverwrite); err != nil {
-		log.Fatalln("Load topic Meta failed: ", err)
+	if !partitionMetaInited {
+		initPartitionID := initOffset
+		if err = txn.Put(t.partitionMetaDB, initPartitionID, initOffset, lmdb.NoOverwrite); err != nil {
+			log.Fatalln("Load topic Meta failed: ", err)
+		}
 	}
 }
 
