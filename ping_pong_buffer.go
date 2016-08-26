@@ -52,6 +52,7 @@ func (ppb *PingPongBuffer) Put(msg *Message) {
 	if len(*ppb.currentCache) >= ppb.flushThreshold {
 		ppb.Unlock()
 		ppb.bgFlush <- true
+		ppb.bgFlush <- true
 		return
 	}
 
@@ -95,6 +96,7 @@ func (ppb *PingPongBuffer) swithAndFlush() {
 			ppb.currentCache = &ppb.cache0
 		}
 		ppb.Unlock()
+		<-ppb.bgFlush
 		ppb.handler(*flushCache)
 		*flushCache = nil
 	} else {
