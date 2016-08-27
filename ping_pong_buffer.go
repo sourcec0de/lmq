@@ -16,6 +16,7 @@ type PingPongBuffer struct {
 	flushThreshold int
 	bgFlush        chan bool
 	flushInterval  time.Duration
+	flushTimer     *time.Timer
 
 	exitChan <-chan struct{}
 
@@ -34,6 +35,7 @@ func NewPingPongBuffer(exitChan <-chan struct{}, flushThreshold int, flushInterv
 		flushThreshold: flushThreshold,
 		bgFlush:        make(chan bool),
 		flushInterval:  flushInterval,
+		flushTimer:     time.NewTimer(flushInterval),
 		exitChan:       exitChan,
 		handler:        handler,
 	}
@@ -46,6 +48,8 @@ func NewPingPongBuffer(exitChan <-chan struct{}, flushThreshold int, flushInterv
 // will notify flush goroutine to push data to hadnler,
 // and switch to another cache to keep on receiving.
 func (ppb *PingPongBuffer) Put(msg *Message) {
+	ppb.flushTimer.Reset(ppb.flushInterval)
+
 	ppb.Lock()
 
 	*ppb.currentCache = append(*ppb.currentCache, msg)
@@ -63,21 +67,36 @@ func (ppb *PingPongBuffer) Put(msg *Message) {
 // listen flush event, when event is triggered,
 // push msgs to hadnler and switch internal cache.
 func (ppb *PingPongBuffer) Flush() {
-	flushTicker := time.NewTicker(ppb.flushInterval)
-
 	for {
 		select {
 		case <-ppb.bgFlush:
-			ppb.swithAndFlush()
-		case <-flushTicker.C:
-			ppb.swithAndFlush()
+			ppb.Lock()
+			if len(*ppb.currentCache) > 0 {
+				flushCache := ppb.switchCache()
+				ppb.Unlock()
+				<-ppb.bgFlush
+				ppb.handler(*flushCache)
+				*flushCache = nil
+			} else {
+				ppb.Unlock()
+			}
+		case <-ppb.flushTimer.C:
+			ppb.Lock()
+			if len(*ppb.currentCache) > 0 {
+				flushCache := ppb.switchCache()
+				ppb.Unlock()
+				ppb.handler(*flushCache)
+				*flushCache = nil
+			} else {
+				ppb.Unlock()
+			}
 		case <-ppb.exitChan:
 			goto exit
 		}
 	}
 
 exit:
-	flushTicker.Stop()
+	ppb.flushTimer.Stop()
 
 	ppb.Lock()
 	defer ppb.Unlock()
@@ -86,20 +105,12 @@ exit:
 	ppb.cache1 = nil
 }
 
-func (ppb *PingPongBuffer) swithAndFlush() {
-	ppb.Lock()
-	if len(*ppb.currentCache) > 0 {
-		flushCache := ppb.currentCache
-		if ppb.currentCache == &ppb.cache0 {
-			ppb.currentCache = &ppb.cache1
-		} else {
-			ppb.currentCache = &ppb.cache0
-		}
-		ppb.Unlock()
-		<-ppb.bgFlush
-		ppb.handler(*flushCache)
-		*flushCache = nil
+func (ppb *PingPongBuffer) switchCache() *[]*Message {
+	flushCache := ppb.currentCache
+	if ppb.currentCache == &ppb.cache0 {
+		ppb.currentCache = &ppb.cache1
 	} else {
-		ppb.Unlock()
+		ppb.currentCache = &ppb.cache0
 	}
+	return flushCache
 }
