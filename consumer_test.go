@@ -28,20 +28,21 @@ var _ = Describe("Consumer", func() {
 			Topics:         make(map[string]TopicOption),
 			BackendStorage: "Lmdb",
 		}
-		topicName = "log"
+		topicName = "logTopic"
 		topicOption = TopicOption{
 			Name:                topicName,
 			MaxBytesPerFile:     2 * 1024 * 1024,
-			MaxDataFiles:        4,
-			BufferSize:          40,
-			BufferFlushInterval: 2 * time.Millisecond,
+			MaxDataFiles:        1000000,
+			BufferSize:          1,
+			BufferFlushInterval: 1 * time.Nanosecond,
+			FetchSize:           100,
 		}
 		opt.Topics[topicName] = topicOption
 	})
 
 	JustBeforeEach(func() {
 		aproducer, aperr = NewAsyncProducer(opt)
-		consumer, cerr = NewConsumer(opt)
+		consumer, cerr = NewConsumer("logConsumer", opt)
 	})
 
 	Context("when the aproducer creates succesfully", func() {
@@ -60,6 +61,39 @@ var _ = Describe("Consumer", func() {
 
 			It("should not error", func() {
 				Expect(cerr).NotTo(HaveOccurred())
+			})
+
+			Context("when publish data", func() {
+				It("should be consumed correctly", func() {
+					pm := &ProducerMessage{
+						Topic:     "logTopic",
+						Body:      []byte("hello lmq with cache full"),
+						Timestamp: time.Now(),
+					}
+					for i := 0; i < 50000; i++ {
+						aproducer.Input() <- pm
+					}
+
+					time.Sleep(1 * time.Second)
+
+					tc, err := consumer.ConsumeTopic(topicName, 0)
+					Expect(err).NotTo(HaveOccurred())
+					msgs := tc.Messages()
+					count := 0
+					timeout := time.NewTimer(100 * time.Millisecond)
+				Loop:
+					for {
+						select {
+						case <-msgs:
+							count++
+							timeout.Reset(100 * time.Millisecond)
+						case <-timeout.C:
+							break Loop
+						}
+					}
+
+					Expect(count).To(Equal(50000))
+				})
 			})
 		})
 	})
