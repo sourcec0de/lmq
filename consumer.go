@@ -19,12 +19,12 @@ type consumer struct {
 	waitGroup WaitGroupWrapper
 }
 
-func NewConsumer(opt *Options) (Consumer, error) {
+func NewConsumer(groupID string, opt *Options) (Consumer, error) {
 	queue, err := NewQueue(opt)
 	if err != nil {
 		return nil, err
 	}
-	c, err := NewConsumerWithQueue(queue)
+	c, err := NewConsumerWithQueue(groupID, queue)
 	if err != nil {
 		return nil, err
 	}
@@ -32,10 +32,11 @@ func NewConsumer(opt *Options) (Consumer, error) {
 	return c, nil
 }
 
-func NewConsumerWithQueue(queue Queue) (Consumer, error) {
+func NewConsumerWithQueue(groupID string, queue Queue) (Consumer, error) {
 	c := &consumer{
 		queue:    queue,
 		opt:      queue.Option(),
+		groupID:  groupID,
 		children: make([]*topicConsumer, 0),
 		exitChan: make(chan struct{}),
 	}
@@ -64,7 +65,7 @@ func (c *consumer) ConsumeTopic(topic string, offset uint64) (TopicConsumer, err
 		consumer:  c,
 		messages:  make(chan *[]byte, c.opt.Topics[topic].BufferSize),
 		topic:     c.openTopic(topic),
-		fetchSize: c.opt.Topics[topic].fetchSize,
+		fetchSize: c.opt.Topics[topic].FetchSize,
 		exitChan:  make(chan struct{}),
 	}
 
