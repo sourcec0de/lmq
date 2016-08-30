@@ -281,7 +281,7 @@ func (t *lmdbTopic) scanPartition(groupID string, msgs chan<- *[]byte) (int32, b
 		}
 		k, v, err := t.cursor.Get(uInt64ToBytes(cOffset), nil, lmdb.SetRange)
 		offset := bytesToUInt64(k)
-		for ; err == nil && scanned < t.opt.fetchSize; scanned++ {
+		for ; err == nil && scanned < t.opt.FetchSize; scanned++ {
 			msgs <- &v
 			k, v, err = t.cursor.Get(nil, nil, lmdb.Next)
 			if err != nil && lmdb.IsNotFound(err) {

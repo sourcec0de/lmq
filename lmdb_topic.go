@@ -130,7 +130,7 @@ func (t *lmdbTopic) openPartitionForConsume(groupID string) {
 
 func (t *lmdbTopic) scanMessages(groupID string, msgs chan<- *[]byte) {
 	fetchSize, eof := t.scanPartition(groupID, msgs)
-	if (fetchSize == t.opt.fetchSize) || eof {
+	if (fetchSize == t.opt.FetchSize) || eof {
 		runtime.Gosched()
 	}
 	if eof {
