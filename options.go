@@ -11,7 +11,7 @@ type TopicOption struct {
 	BufferSize          int
 	BufferFlushInterval time.Duration
 
-	fetchSize int32
+	FetchSize int32
 }
 
 type Options struct {
