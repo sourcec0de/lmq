@@ -107,7 +107,7 @@ func (t *lmdbTopic) persistToPartitionDB(offset uint64, msgs []*Message) (uint64
 }
 
 func (t *lmdbTopic) updatePersistOffset(txn *lmdb.Txn, offset uint64) {
-	if err := txn.Put(t.ownerMetaDB, []byte("producer_head"), uInt64ToBytes(offset+1), 0); err != nil {
+	if err := txn.Put(t.ownerMetaDB, []byte("producer_head"), uInt64ToBytes(offset), 0); err != nil {
 		log.Fatalln("Update persist offset failed!")
 	}
 }
