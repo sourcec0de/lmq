@@ -10,38 +10,47 @@ import (
 )
 
 func (t *lmdbTopic) choosePartitionForPersist(txn *lmdb.Txn, rotating bool) uint64 {
-	pm := t.lastestPartitionMeta(txn)
+	id := t.latestPartitionID(txn)
 
-	if rotating && t.partitionID == pm.id {
-		pm.id++
-		pm.offset++
-		t.updatePartitionMeta(txn, pm)
+	if rotating && t.partitionID == id {
+		id++
+		t.updatePartitionMeta(txn, id, t.latestPersistOffset(txn)+1)
 	}
 
-	t.partitionID = pm.id
+	t.partitionID = id
 	return t.partitionID
 }
 
-func (t *lmdbTopic) lastestPartitionMeta(txn *lmdb.Txn) *lmdbPartitionMeta {
+func (t *lmdbTopic) latestPartitionID(txn *lmdb.Txn) uint64 {
 	cur, err := txn.OpenCursor(t.partitionMetaDB)
 	if err != nil {
 		log.Fatalln("In lastestPartitionMeta, open cursor failed: ", err)
 	}
 
-	idBuf, offsetBuf, err := cur.Get(nil, nil, lmdb.Last)
+	idBuf, _, err := cur.Get(nil, nil, lmdb.Last)
 	if err != nil {
 		log.Fatalln("In lastestPartitionMeta, cursor scan failed: ", err)
 	}
 
-	pm := &lmdbPartitionMeta{
-		id:     bytesToUInt64(idBuf),
-		offset: bytesToUInt64(offsetBuf),
-	}
-	return pm
+	return bytesToUInt64(idBuf)
 }
 
-func (t *lmdbTopic) updatePartitionMeta(txn *lmdb.Txn, pm *lmdbPartitionMeta) {
-	if err := txn.Put(t.partitionMetaDB, uInt64ToBytes(pm.id), uInt64ToBytes(pm.offset), lmdb.Append); err != nil {
+func (t *lmdbTopic) latestPersistOffset(txn *lmdb.Txn) uint64 {
+	cur, err := txn.OpenCursor(t.ownerMetaDB)
+	if err != nil {
+		log.Fatalln("In lastestPartitionMeta, open cursor failed: ", err)
+	}
+
+	_, offsetBuf, err := cur.Get(nil, nil, lmdb.Last)
+	if err != nil {
+		log.Fatalln("In lastestPartitionMeta, cursor scan failed: ", err)
+	}
+
+	return bytesToUInt64(offsetBuf)
+}
+
+func (t *lmdbTopic) updatePartitionMeta(txn *lmdb.Txn, id, eof uint64) {
+	if err := txn.Put(t.partitionMetaDB, uInt64ToBytes(id), uInt64ToBytes(eof), lmdb.Append); err != nil {
 		log.Fatalln("updatePartitionMeta failed: ", err)
 	}
 }
@@ -174,6 +183,7 @@ func (t *lmdbTopic) removeExpiredPartitions(txn *lmdb.Txn, expiredCount uint64) 
 
 func (t *lmdbTopic) choosePartitionForConsume(txn *lmdb.Txn, groupID string) uint64 {
 	t.partitionID = t.consumePartitionID(txn, groupID, t.partitionID)
+
 	return t.partitionID
 }
 
@@ -236,6 +246,7 @@ func (t *lmdbTopic) consumePartitionID(txn *lmdb.Txn, groupID string, searchFrom
 	k, v, err := cursor.Get(uInt64ToBytes(searchFrom), nil, lmdb.SetRange)
 	partitionID = bytesToUInt64(k)
 	eoffset = bytesToUInt64(v)
+
 	for err == nil && offset >= eoffset {
 		k, v, err = cursor.Get(nil, nil, lmdb.Next)
 		if err == nil {
@@ -270,37 +281,47 @@ func (t *lmdbTopic) consumeOffset(txn *lmdb.Txn, groupID string) uint64 {
 	return bytesToUInt64(offsetBuf)
 }
 
-func (t *lmdbTopic) scanPartition(groupID string, msgs chan<- *[]byte) (int32, bool) {
-	var scanned int32
-	err := t.queueEnv.Update(func(txn *lmdb.Txn) error {
+var count = 0
+
+func (t *lmdbTopic) scanPartition(groupID string, msgs chan<- *[]byte) (scanned int32, eof bool) {
+	scan := func(txn *lmdb.Txn) error {
 		pOffset := t.persistedOffset(txn)
 		cOffset := t.consumeOffset(txn, groupID)
 
-		if pOffset-cOffset == 1 || pOffset == 0 {
+		if cOffset-pOffset == 1 || pOffset == 0 {
+			os.Exit(0)
 			return nil
 		}
+
+		var offset uint64
 		k, v, err := t.cursor.Get(uInt64ToBytes(cOffset), nil, lmdb.SetRange)
-		offset := bytesToUInt64(k)
 		for ; err == nil && scanned < t.opt.FetchSize; scanned++ {
+			offset = bytesToUInt64(k)
 			msgs <- &v
+			count++
+
 			k, v, err = t.cursor.Get(nil, nil, lmdb.Next)
 			if err != nil && lmdb.IsNotFound(err) {
 				break
 			}
-			offset = bytesToUInt64(k)
 		}
 		if offset > 0 {
 			t.updateConsumeOffset(txn, groupID, offset+1)
 		}
-		return err
-	})
-	if err != nil {
-		if lmdb.IsNotFound(err) {
-			return scanned, true
+		if err != nil {
+			if !lmdb.IsNotFound(err) {
+				log.Fatalln("Scan partition failed: ", err)
+			}
+			if offset < t.persistedOffset(txn) {
+				eof = true
+			} else {
+				eof = false
+			}
 		}
-		log.Fatalln("Scan partition failed: ", err)
+		return nil
 	}
-	return scanned, false
+	_ = t.queueEnv.Update(scan)
+	return scanned, eof
 }
 
 func (t *lmdbTopic) updateConsumeOffset(txn *lmdb.Txn, groupID string, offset uint64) {
