@@ -76,6 +76,8 @@ var _ = Describe("Consumer", func() {
 
 					time.Sleep(1 * time.Second)
 
+					aproducer.Close()
+
 					tc, err := consumer.ConsumeTopic(topicName, 0)
 					Expect(err).NotTo(HaveOccurred())
 					msgs := tc.Messages()
