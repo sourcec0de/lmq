@@ -289,7 +289,6 @@ func (t *lmdbTopic) scanPartition(groupID string, msgs chan<- *[]byte) (scanned 
 		cOffset := t.consumeOffset(txn, groupID)
 
 		if cOffset-pOffset == 1 || pOffset == 0 {
-			os.Exit(0)
 			return nil
 		}
 
