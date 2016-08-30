@@ -26,7 +26,7 @@ func NewLmdbBackendStorage(opt *Options) (BackendStorage, error) {
 	if err = env.SetMapSize(int64(opt.MaxTopicCount * 1024 * 1024)); err != nil {
 		return nil, err
 	}
-	if err = env.SetMaxDBs(opt.MaxTopicCount); err != nil {
+	if err = env.SetMaxDBs(opt.MaxTopicCount * 2); err != nil {
 		return nil, err
 	}
 	envPath := fmt.Sprintf("%s/%s", opt.DataPath, "__meta__")
