@@ -60,7 +60,8 @@ func (t *lmdbTopic) openPersistPartitionDB(id uint64) error {
 
 	env, err := lmdb.NewEnv()
 	if err != nil {
-		return err
+		log.Printf("gid: %d open env failed: %s", GoID(), err)
+		return nil
 	}
 	if err = env.SetMapSize(t.opt.MaxBytesPerFile); err != nil {
 		return err
