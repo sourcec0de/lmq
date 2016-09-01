@@ -1,6 +1,9 @@
 package lmq
 
-import "sync"
+import (
+	"sync"
+	"time"
+)
 
 type Consumer interface {
 	ConsumeTopic(topic string, offset uint64) (TopicConsumer, error)
@@ -93,12 +96,13 @@ func (c *consumer) addChild(child *topicConsumer) {
 }
 
 func (tc *topicConsumer) readMessages() {
+	ticker := time.NewTicker(50 * time.Millisecond)
 	for {
 		select {
 		case <-tc.consumer.exitChan:
 		case <-tc.exitChan:
 			goto exit
-		default:
+		case <-ticker.C:
 			tc.consumer.queue.ReadMessages(tc.topic, tc.consumer.groupID, tc.messages)
 		}
 	}
