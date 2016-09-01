@@ -17,9 +17,14 @@ func TestLmq(t *testing.T) {
 var _ = BeforeSuite(func() {
 	err := os.Mkdir("./queue_data_single_topic_with_single_cp", 0755)
 	Expect(err).NotTo(HaveOccurred())
+	err = os.Mkdir("./queue_data_single_topic_with_parallels_cp", 0755)
+	Expect(err).NotTo(HaveOccurred())
+
 })
 
 var _ = AfterSuite(func() {
 	err := os.RemoveAll("./queue_data_single_topic_with_single_cp")
+	Expect(err).NotTo(HaveOccurred())
+	err = os.RemoveAll("./queue_data_single_topic_with_parallels_cp")
 	Expect(err).NotTo(HaveOccurred())
 })
