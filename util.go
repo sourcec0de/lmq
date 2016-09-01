@@ -2,7 +2,10 @@ package lmq
 
 import (
 	"encoding/binary"
+	"fmt"
+	"runtime"
 	"strconv"
+	"strings"
 	"sync"
 )
 
@@ -30,4 +33,15 @@ func bytesToUInt64(buf []byte) uint64 {
 
 func uInt64ToString(i uint64) string {
 	return strconv.FormatUint(i, 10)
+}
+
+func GoID() int {
+	var buf [64]byte
+	n := runtime.Stack(buf[:], false)
+	idField := strings.Fields(strings.TrimPrefix(string(buf[:n]), "goroutine "))[0]
+	id, err := strconv.Atoi(idField)
+	if err != nil {
+		panic(fmt.Sprintf("cannot get goroutine id: %v", err))
+	}
+	return id
 }
