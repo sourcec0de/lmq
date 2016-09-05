@@ -120,6 +120,7 @@ var _ = Describe("LmqSingleTopicWithParellelsCp", func() {
 							msgs := tc.Messages()
 							timeout := time.NewTimer(100 * time.Millisecond)
 							consumedCount := 0
+						loop:
 							for {
 								select {
 								case <-msgs:
@@ -127,6 +128,7 @@ var _ = Describe("LmqSingleTopicWithParellelsCp", func() {
 									timeout.Reset(100 * time.Millisecond)
 								case <-timeout.C:
 									consumedCounts <- consumedCount
+									break loop
 								}
 							}
 						}
