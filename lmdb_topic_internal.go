@@ -60,7 +60,6 @@ func (t *lmdbTopic) openPersistPartitionDB(id uint64) error {
 
 	env, err := lmdb.NewEnv()
 	if err != nil {
-		log.Printf("gid: %d open env failed: %s", GoID(), err)
 		return nil
 	}
 	if err = env.SetMapSize(t.opt.MaxBytesPerFile); err != nil {
@@ -70,7 +69,7 @@ func (t *lmdbTopic) openPersistPartitionDB(id uint64) error {
 		return err
 	}
 	if err = env.Open(path, lmdb.NoSync|lmdb.NoSubdir, 0644); err != nil {
-		return err
+		return nil
 	}
 	_ = env.Update(func(txn *lmdb.Txn) error {
 		partitionName := uInt64ToString(t.partitionID)
@@ -193,7 +192,7 @@ func (t *lmdbTopic) openConsumePartitionDB(id uint64) error {
 
 	env, err := lmdb.NewEnv()
 	if err != nil {
-		return err
+		return nil
 	}
 	t.env = env
 	if err = env.SetMaxDBs(1); err != nil {
@@ -203,7 +202,7 @@ func (t *lmdbTopic) openConsumePartitionDB(id uint64) error {
 		return err
 	}
 	if err = env.Open(path, lmdb.Readonly|lmdb.NoSync|lmdb.NoSubdir, 0644); err != nil {
-		return err
+		return nil
 	}
 	if _, err = env.ReaderCheck(); err != nil {
 		return err
@@ -282,8 +281,6 @@ func (t *lmdbTopic) consumeOffset(txn *lmdb.Txn, groupID string) uint64 {
 	return bytesToUInt64(offsetBuf)
 }
 
-var count = 0
-
 func (t *lmdbTopic) scanPartition(groupID string, msgs chan<- *[]byte) (scanned int32, eof bool) {
 	scan := func(txn *lmdb.Txn) error {
 		pOffset := t.persistedOffset(txn)
@@ -298,7 +295,6 @@ func (t *lmdbTopic) scanPartition(groupID string, msgs chan<- *[]byte) (scanned 
 		for ; err == nil && scanned < t.opt.FetchSize; scanned++ {
 			offset = bytesToUInt64(k)
 			msgs <- &v
-			count++
 
 			k, v, err = t.cursor.Get(nil, nil, lmdb.Next)
 			if err != nil && lmdb.IsNotFound(err) {

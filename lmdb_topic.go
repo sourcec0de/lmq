@@ -96,25 +96,24 @@ func (t *lmdbTopic) openPartitionForPersist() {
 func (t *lmdbTopic) persistMessages(msgs []*Message) {
 	isFull := false
 	_ = t.queueEnv.Update(func(txn *lmdb.Txn) error {
-		// log.Printf("In persistMessages, gid: %d get Update Txn, t.queueEnv's addr: %p", GoID(), t.queueEnv)
+
 		offset := t.persistedOffset(txn)
-		// log.Printf("In persistMessages, gid: %d, offset: %d", GoID(), offset)
-		log.Printf("In persistMessages, gid: %d, offset: %d", GoID(), offset)
+
 		offset, err := t.persistToPartitionDB(offset, msgs)
 		if lmdb.IsMapFull(err) {
 			isFull = true
 		}
 
 		if !isFull {
-			//log.Printf("In persistMessages, gid: %d, update offset: %d", GoID(), offset)
+
 			t.updatePersistOffset(txn, offset)
-			// log.Printf("In persistMessages, gid: %d will release Update Txn", GoID())
+
 		}
 		return err
 	})
 
 	if isFull {
-		log.Printf("In persistMessages, gid: %d will rotate persist partititon", GoID())
+
 		t.rotatePersistPartition()
 		t.persistMessages(msgs)
 	}
