@@ -93,7 +93,7 @@ var _ = Describe("LmqSingleTopicWithSingleCp", func() {
 					select {
 					case <-msgs:
 						consumedCount++
-						timeout.Reset(100 * time.Millisecond)
+						timeout.Reset(2 * time.Second)
 					case <-timeout.C:
 						goto result
 					}
