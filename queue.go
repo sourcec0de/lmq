@@ -6,6 +6,7 @@ type Queue interface {
 	OpenTopic(topic, groupID string, flag int) Topic
 	PutMessages(topic Topic, msgs []*Message)
 	ReadMessages(topic Topic, groupID string, msgs chan<- *[]byte)
+	Stat(topic Topic) *TopicStat
 	CloseTopic(topic Topic)
 	Close()
 }
@@ -52,6 +53,10 @@ func (q *queue) PutMessages(topic Topic, msgs []*Message) {
 
 func (q *queue) ReadMessages(topic Topic, groupID string, msgs chan<- *[]byte) {
 	q.backendStorage.ScanMessages(topic, groupID, msgs)
+}
+
+func (q *queue) Stat(topic Topic) *TopicStat {
+	return q.backendStorage.Stat(topic)
 }
 
 func (q *queue) CloseTopic(topic Topic) {

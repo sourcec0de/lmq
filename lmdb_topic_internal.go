@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/bmatsuo/lmdb-go/lmdb"
@@ -230,7 +231,7 @@ func (t *lmdbTopic) openConsumePartitionDB(id uint64) error {
 	t.cursor = cursor
 	rtxn.Reset()
 
-	return rtxn.Renew()
+	return nil
 }
 
 func (t *lmdbTopic) consumePartitionID(txn *lmdb.Txn, groupID string, searchFrom uint64) uint64 {
@@ -283,6 +284,7 @@ func (t *lmdbTopic) consumeOffset(txn *lmdb.Txn, groupID string) uint64 {
 
 func (t *lmdbTopic) scanPartition(groupID string, msgs chan<- *[]byte) (scanned int32, eof bool) {
 	scan := func(txn *lmdb.Txn) error {
+		t.rtxn.Renew()
 		pOffset := t.persistedOffset(txn)
 		cOffset := t.consumeOffset(txn, groupID)
 
@@ -290,28 +292,27 @@ func (t *lmdbTopic) scanPartition(groupID string, msgs chan<- *[]byte) (scanned 
 			return nil
 		}
 
-		var offset uint64
 		k, v, err := t.cursor.Get(uInt64ToBytes(cOffset), nil, lmdb.SetRange)
-		for ; err == nil && scanned < t.opt.FetchSize; scanned++ {
-			offset = bytesToUInt64(k)
-			msgs <- &v
-
-			k, v, err = t.cursor.Get(nil, nil, lmdb.Next)
-			if err != nil && lmdb.IsNotFound(err) {
-				break
+		if err == nil {
+			var offset uint64
+			for ; err == nil && scanned < t.opt.FetchSize; scanned++ {
+				offset = bytesToUInt64(k)
+				msgs <- &v
+				k, v, err = t.cursor.Get(nil, nil, lmdb.Next)
 			}
-		}
-		if offset > 0 {
-			t.updateConsumeOffset(txn, groupID, offset+1)
-		}
-		if err != nil {
-			if !lmdb.IsNotFound(err) {
-				log.Fatalln("Scan partition failed: ", err)
+			if offset > 0 {
+				t.updateConsumeOffset(txn, groupID, offset+1)
 			}
-			if offset < t.persistedOffset(txn) {
-				eof = true
-			} else {
-				eof = false
+		} else {
+			if err != nil {
+				if !lmdb.IsNotFound(err) {
+					log.Fatalln("Scan partition failed: ", err)
+				}
+				if cOffset < t.persistedOffset(txn) {
+					eof = true
+				} else {
+					eof = false
+				}
 			}
 		}
 		return nil
@@ -364,4 +365,8 @@ func (t *lmdbTopic) readerCheck() {
 	}
 exit:
 	checkTicker.Stop()
+}
+
+func (t *lmdbTopic) checkConsumerKeyPrefix(val string) bool {
+	return len(val) > len("consumer_head_") && strings.HasPrefix(val, "consumer_head_")
 }

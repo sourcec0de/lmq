@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"runtime"
+	"strings"
 
 	"github.com/bmatsuo/lmdb-go/lmdb"
 )
@@ -145,4 +146,32 @@ func (t *lmdbTopic) close() {
 	t.waitGroup.Wait()
 	close(t.inFlight)
 	close(t.exitChan)
+}
+
+type TopicStat struct {
+	PersistedOffset uint64
+	ScanOffset      map[string]uint64
+}
+
+func (t *lmdbTopic) stat() *TopicStat {
+	ts := &TopicStat{}
+	_ = t.queueEnv.Update(func(txn *lmdb.Txn) error {
+		ts.PersistedOffset = t.persistedOffset(txn)
+		cursor, err := txn.OpenCursor(t.ownerMetaDB)
+		if err != nil {
+			return nil
+		}
+		consumerBuf, offsetBuf, err := cursor.Get(nil, nil, lmdb.First)
+		if err != nil {
+			return nil
+		}
+		for err == nil && t.checkConsumerKeyPrefix(string(consumerBuf)) {
+			consumer := string(consumerBuf)
+			name := strings.TrimPrefix(consumer, "consumer_head_")
+			ts.ScanOffset[name] = bytesToUInt64(offsetBuf)
+			consumerBuf, offsetBuf, err = cursor.Get(nil, nil, lmdb.Next)
+		}
+		return nil
+	})
+	return ts
 }

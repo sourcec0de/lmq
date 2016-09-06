@@ -56,6 +56,8 @@ func (lbs *lmdbBackendStorage) OpenTopic(topic, groupID string, flag int) Topic 
 		t.openPartitionForPersist()
 	case 1:
 		t.openPartitionForConsume(groupID)
+	case 2:
+		break
 	default:
 		log.Fatalf("Open topic faild: unvaild %d flag", flag)
 	}
@@ -83,6 +85,10 @@ func (lbs *lmdbBackendStorage) readerCheck() {
 	}
 exit:
 	checkTicker.Stop()
+}
+
+func (lbs *lmdbBackendStorage) Stat(topic Topic) *TopicStat {
+	return topic.(*lmdbTopic).stat()
 }
 
 func (lbs *lmdbBackendStorage) CloseTopic(topic Topic) {
