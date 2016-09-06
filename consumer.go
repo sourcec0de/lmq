@@ -96,14 +96,14 @@ func (c *consumer) addChild(child *topicConsumer) {
 }
 
 func (tc *topicConsumer) readMessages() {
-	ticker := time.NewTicker(50 * time.Millisecond)
 	for {
 		select {
 		case <-tc.consumer.exitChan:
 		case <-tc.exitChan:
 			goto exit
-		case <-ticker.C:
+		default:
 			tc.consumer.queue.ReadMessages(tc.topic, tc.consumer.groupID, tc.messages)
+			time.Sleep(50 * time.Millisecond)
 		}
 	}
 exit:
