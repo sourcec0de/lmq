@@ -300,31 +300,33 @@ func (t *lmdbTopic) scanPartition(groupID string, msgs chan<- *[]byte) (scanned 
 			cursor, err := rtxn.OpenCursor(t.partitionDB)
 			if err != nil {
 				log.Println("Open cursor failed: ", err)
+				return err
 			}
 			t.cursor = cursor
-			k, v, err := t.cursor.Get(uInt64ToBytes(cOffset), nil, lmdb.SetRange)
-			if err == nil {
-				var offset uint64
-				for ; err == nil && scanned < t.opt.FetchSize; scanned++ {
-					offset = bytesToUInt64(k)
-					msgs <- &v
-					k, v, err = t.cursor.Get(nil, nil, lmdb.Next)
-				}
-				if offset > 0 {
-					t.updateConsumeOffset(txn, groupID, offset+1)
-				}
-			} else {
-				if err != nil {
-					if !lmdb.IsNotFound(err) {
-						log.Println("Scan partition failed: ", err)
-					}
-					if cOffset < t.persistedOffset(txn) {
-						eof = true
-					}
-				}
-			}
 			return nil
 		})
+
+		k, v, err := t.cursor.Get(uInt64ToBytes(cOffset), nil, lmdb.SetRange)
+		if err == nil {
+			var offset uint64
+			for ; err == nil && scanned < t.opt.FetchSize; scanned++ {
+				offset = bytesToUInt64(k)
+				msgs <- &v
+				k, v, err = t.cursor.Get(nil, nil, lmdb.Next)
+			}
+			if offset > 0 {
+				t.updateConsumeOffset(txn, groupID, offset+1)
+			}
+		} else {
+			if err != nil {
+				if !lmdb.IsNotFound(err) {
+					log.Println("Scan partition failed: ", err)
+				}
+				if cOffset < t.persistedOffset(txn) {
+					eof = true
+				}
+			}
+		}
 		return nil
 	})
 	return scanned, eof
