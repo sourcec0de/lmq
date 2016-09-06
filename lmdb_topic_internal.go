@@ -61,7 +61,7 @@ func (t *lmdbTopic) openPersistPartitionDB(id uint64) error {
 
 	env, err := lmdb.NewEnv()
 	if err != nil {
-		return nil
+		return err
 	}
 	if err = env.SetMapSize(t.opt.MaxBytesPerFile); err != nil {
 		return err
@@ -69,9 +69,16 @@ func (t *lmdbTopic) openPersistPartitionDB(id uint64) error {
 	if err = env.SetMaxDBs(1); err != nil {
 		return err
 	}
-	if err = env.Open(path, lmdb.NoSync|lmdb.NoSubdir, 0644); err != nil {
-		return nil
+	if err = env.Open(path, lmdb.NoSync|lmdb.NoSubdir, 0664); err != nil {
+		err1 := env.Close()
+		log.Println("Close env failed: ", err1)
+		return err
 	}
+
+	t.env = env
+
+	t.waitGroup.Wrap(func() { t.readerCheck() })
+
 	_ = env.Update(func(txn *lmdb.Txn) error {
 		partitionName := uInt64ToString(t.partitionID)
 		t.partitionDB, err = txn.CreateDBI(partitionName)
@@ -80,10 +87,6 @@ func (t *lmdbTopic) openPersistPartitionDB(id uint64) error {
 		}
 		return nil
 	})
-
-	t.env = env
-
-	t.waitGroup.Wrap(func() { t.readerCheck() })
 
 	return nil
 }
