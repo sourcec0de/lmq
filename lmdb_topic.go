@@ -114,7 +114,6 @@ func (t *lmdbTopic) persistMessages(msgs []*Message) {
 	})
 
 	if isFull {
-
 		t.rotatePersistPartition()
 		t.persistMessages(msgs)
 	}
