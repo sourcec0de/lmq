@@ -223,13 +223,13 @@ func (t *lmdbTopic) openConsumePartitionDB(id uint64) error {
 	if err != nil {
 		return err
 	}
-	t.rtxn = rtxn
 	cursor, err := rtxn.OpenCursor(t.partitionDB)
 	if err != nil {
 		return err
 	}
 	t.cursor = cursor
 	rtxn.Reset()
+	t.rtxn = rtxn
 
 	return nil
 }
