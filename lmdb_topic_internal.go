@@ -219,18 +219,19 @@ func (t *lmdbTopic) openConsumePartitionDB(id uint64) error {
 	if err != nil {
 		return err
 	}
-	rtxn, err := env.BeginTxn(nil, lmdb.Readonly)
-	if err != nil {
-		return err
-	}
-	cursor, err := rtxn.OpenCursor(t.partitionDB)
-	if err != nil {
-		return err
-	}
-	t.cursor = cursor
-	rtxn.Reset()
-	t.rtxn = rtxn
-
+	/*
+		rtxn, err := env.BeginTxn(nil, lmdb.Readonly)
+		if err != nil {
+			return err
+		}
+		cursor, err := rtxn.OpenCursor(t.partitionDB)
+		if err != nil {
+			return err
+		}
+		t.cursor = cursor
+		rtxn.Reset()
+		t.rtxn = rtxn
+	*/
 	return nil
 }
 
@@ -284,9 +285,9 @@ func (t *lmdbTopic) consumeOffset(txn *lmdb.Txn, groupID string) uint64 {
 
 func (t *lmdbTopic) scanPartition(groupID string, msgs chan<- *[]byte) (scanned int32, eof bool) {
 	_ = t.queueEnv.Update(func(txn *lmdb.Txn) error {
-		if err := t.rtxn.Renew(); err != nil {
-			// log.Println("Renew rtxn failed: ", err)
-		}
+		// if err := t.rtxn.Renew(); err != nil {
+		// log.Println("Renew rtxn failed: ", err)
+		// }
 
 		pOffset := t.persistedOffset(txn)
 		cOffset := t.consumeOffset(txn, groupID)
@@ -295,27 +296,35 @@ func (t *lmdbTopic) scanPartition(groupID string, msgs chan<- *[]byte) (scanned 
 			return nil
 		}
 
-		k, v, err := t.cursor.Get(uInt64ToBytes(cOffset), nil, lmdb.SetRange)
-		if err == nil {
-			var offset uint64
-			for ; err == nil && scanned < t.opt.FetchSize; scanned++ {
-				offset = bytesToUInt64(k)
-				msgs <- &v
-				k, v, err = t.cursor.Get(nil, nil, lmdb.Next)
-			}
-			if offset > 0 {
-				t.updateConsumeOffset(txn, groupID, offset+1)
-			}
-		} else {
+		_ = t.env.View(func(txn *lmdb.Txn) error {
+			cursor, err := txn.OpenCursor(t.partitionDB)
 			if err != nil {
-				if !lmdb.IsNotFound(err) {
-					log.Println("Scan partition failed: ", err)
+				log.Println("Open cursor failed: ", err)
+			}
+			t.cursor = cursor
+			k, v, err := t.cursor.Get(uInt64ToBytes(cOffset), nil, lmdb.SetRange)
+			if err == nil {
+				var offset uint64
+				for ; err == nil && scanned < t.opt.FetchSize; scanned++ {
+					offset = bytesToUInt64(k)
+					msgs <- &v
+					k, v, err = t.cursor.Get(nil, nil, lmdb.Next)
 				}
-				if cOffset < t.persistedOffset(txn) {
-					eof = true
+				if offset > 0 {
+					t.updateConsumeOffset(txn, groupID, offset+1)
+				}
+			} else {
+				if err != nil {
+					if !lmdb.IsNotFound(err) {
+						log.Println("Scan partition failed: ", err)
+					}
+					if cOffset < t.persistedOffset(txn) {
+						eof = true
+					}
 				}
 			}
-		}
+			return nil
+		})
 		return nil
 	})
 	return scanned, eof
