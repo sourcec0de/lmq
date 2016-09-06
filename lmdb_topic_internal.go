@@ -196,21 +196,19 @@ func (t *lmdbTopic) openConsumePartitionDB(id uint64) error {
 
 	env, err := lmdb.NewEnv()
 	if err != nil {
-		return nil
+		return err
 	}
-	t.env = env
 	if err = env.SetMaxDBs(1); err != nil {
 		return err
 	}
 	if err = env.SetMapSize(t.opt.MaxBytesPerFile); err != nil {
 		return err
 	}
-	if err = env.Open(path, lmdb.Readonly|lmdb.NoSync|lmdb.NoSubdir, 0644); err != nil {
-		return nil
-	}
-	if _, err = env.ReaderCheck(); err != nil {
+	if err = env.Open(path, lmdb.Readonly|lmdb.NoSync|lmdb.NoSubdir, 0664); err != nil {
 		return err
 	}
+
+	t.env = env
 
 	t.waitGroup.Wrap(func() { t.readerCheck() })
 
@@ -228,7 +226,6 @@ func (t *lmdbTopic) openConsumePartitionDB(id uint64) error {
 	t.rtxn = rtxn
 	cursor, err := rtxn.OpenCursor(t.partitionDB)
 	if err != nil {
-
 		return err
 	}
 	t.cursor = cursor
@@ -286,8 +283,11 @@ func (t *lmdbTopic) consumeOffset(txn *lmdb.Txn, groupID string) uint64 {
 }
 
 func (t *lmdbTopic) scanPartition(groupID string, msgs chan<- *[]byte) (scanned int32, eof bool) {
-	scan := func(txn *lmdb.Txn) error {
-		t.rtxn.Renew()
+	_ = t.queueEnv.Update(func(txn *lmdb.Txn) error {
+		if err := t.rtxn.Renew(); err != nil {
+			// log.Println("Renew rtxn failed: ", err)
+		}
+
 		pOffset := t.persistedOffset(txn)
 		cOffset := t.consumeOffset(txn, groupID)
 
@@ -309,18 +309,15 @@ func (t *lmdbTopic) scanPartition(groupID string, msgs chan<- *[]byte) (scanned 
 		} else {
 			if err != nil {
 				if !lmdb.IsNotFound(err) {
-					log.Fatalln("Scan partition failed: ", err)
+					log.Println("Scan partition failed: ", err)
 				}
 				if cOffset < t.persistedOffset(txn) {
 					eof = true
-				} else {
-					eof = false
 				}
 			}
 		}
 		return nil
-	}
-	_ = t.queueEnv.Update(scan)
+	})
 	return scanned, eof
 }
 
