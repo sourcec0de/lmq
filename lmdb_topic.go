@@ -97,22 +97,16 @@ func (t *lmdbTopic) openPartitionForPersist() {
 func (t *lmdbTopic) persistMessages(msgs []*Message) {
 	isFull := false
 	_ = t.queueEnv.Update(func(txn *lmdb.Txn) error {
-
 		offset := t.persistedOffset(txn)
-
 		offset, err := t.persistToPartitionDB(offset, msgs)
 		if lmdb.IsMapFull(err) {
 			isFull = true
 		}
-
 		if !isFull {
-
 			t.updatePersistOffset(txn, offset)
-
 		}
 		return err
 	})
-
 	if isFull {
 		t.rotatePersistPartition()
 		t.persistMessages(msgs)
