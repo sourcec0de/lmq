@@ -34,7 +34,7 @@ var _ = Describe("LmqSingleTopicWithSingleCp", func() {
 			Topics:         make(map[string]TopicOption),
 			BackendStorage: "Lmdb",
 		}
-		topicName = "parallels"
+		topicName = "single"
 		topicOption = TopicOption{
 			Name:                topicName,
 			MaxBytesPerFile:     2 * 1024 * 1024,
