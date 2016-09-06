@@ -296,8 +296,8 @@ func (t *lmdbTopic) scanPartition(groupID string, msgs chan<- *[]byte) (scanned 
 			return nil
 		}
 
-		_ = t.env.View(func(txn *lmdb.Txn) error {
-			cursor, err := txn.OpenCursor(t.partitionDB)
+		_ = t.env.View(func(rtxn *lmdb.Txn) error {
+			cursor, err := rtxn.OpenCursor(t.partitionDB)
 			if err != nil {
 				log.Println("Open cursor failed: ", err)
 			}
