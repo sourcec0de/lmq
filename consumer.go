@@ -67,14 +67,16 @@ func (c *consumer) ConsumeTopic(topic string, offset uint64) (TopicConsumer, err
 	child := &topicConsumer{
 		consumer:  c,
 		messages:  make(chan *[]byte, c.opt.Topics[topic].BufferSize),
-		topic:     c.openTopic(topic),
 		fetchSize: c.opt.Topics[topic].FetchSize,
 		exitChan:  make(chan struct{}),
 	}
 
 	c.addChild(child)
 
-	c.waitGroup.Wrap(func() { child.readMessages() })
+	c.waitGroup.Wrap(func() {
+		child.topic = c.openTopic(topic)
+		child.readMessages()
+	})
 
 	return child, nil
 }
