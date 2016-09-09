@@ -125,7 +125,7 @@ var _ = Describe("LmqSingleTopicWithParellelsCp", func() {
 								select {
 								case <-msgs:
 									consumedCount++
-									timeout.Reset(2 * time.Second)
+									timeout.Reset(10 * time.Second)
 								case <-timeout.C:
 									consumedCounts <- consumedCount
 									break loop
