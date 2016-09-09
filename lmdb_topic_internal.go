@@ -213,7 +213,7 @@ func (t *lmdbTopic) openConsumePartitionDB(id uint64) error {
 	t.waitGroup.Wrap(func() { t.readerCheck() })
 
 	err = env.View(func(txn *lmdb.Txn) error {
-		t.partitionDB, err = txn.CreateDBI(uInt64ToString(t.partitionID))
+		t.partitionDB, err = txn.OpenDBI(uInt64ToString(t.partitionID), 0)
 		return err
 	})
 	if err != nil {
@@ -285,8 +285,9 @@ func (t *lmdbTopic) consumeOffset(txn *lmdb.Txn, groupID string) uint64 {
 
 func (t *lmdbTopic) scanPartition(groupID string, msgs chan<- *[]byte) (scanned int32, eof bool) {
 	_ = t.queueEnv.Update(func(txn *lmdb.Txn) error {
+		defer t.rtxn.Reset()
 		if err := t.rtxn.Renew(); err != nil {
-			// log.Println("Renew rtxn failed: ", err)
+			log.Println("t.rtxn renew failed")
 		}
 
 		pOffset := t.persistedOffset(txn)
@@ -295,20 +296,6 @@ func (t *lmdbTopic) scanPartition(groupID string, msgs chan<- *[]byte) (scanned 
 		if cOffset-pOffset == 1 || pOffset == 0 {
 			return nil
 		}
-		if err := t.cursor.Renew(t.rtxn); err != nil {
-			log.Println("Renew rtxn failed: ", err)
-		}
-		/*
-			_ = t.env.View(func(rtxn *lmdb.Txn) error {
-				cursor, err := rtxn.OpenCursor(t.partitionDB)
-				if err != nil {
-					log.Println("Open cursor failed: ", err)
-					return err
-				}
-				t.cursor = cursor
-				return nil
-			})
-		*/
 
 		k, v, err := t.cursor.Get(uInt64ToBytes(cOffset), nil, lmdb.SetRange)
 		if err == nil {
