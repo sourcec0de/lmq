@@ -32,6 +32,8 @@ type asyncProducer struct {
 
 	input chan *ProducerMessage
 
+	tps []*topicProducer
+
 	exitChan  chan struct{}
 	waitGroup WaitGroupWrapper
 }
@@ -111,6 +113,7 @@ type topicProducer struct {
 
 func (p *asyncProducer) newTopicProducer(topic string) chan<- *ProducerMessage {
 	tp := &topicProducer{parent: p}
+	p.tps = append(p.tps, tp)
 
 	tp.topic = tp.openTopic(topic)
 
@@ -142,7 +145,14 @@ func (p *asyncProducer) shutdown() {
 	close(p.input)
 	close(p.exitChan)
 	p.waitGroup.Wait()
+	p.closeTopics()
 	p.queue.Close()
+}
+
+func (p *asyncProducer) closeTopics() {
+	for _, tp := range p.tps {
+		tp.closeTopic()
+	}
 }
 
 func (tp *topicProducer) putMessage() {
@@ -155,9 +165,8 @@ func (tp *topicProducer) putMessage() {
 		tp.ppb.Put(msg)
 	}
 exit:
-	tp.closeTopic(tp.topic)
 }
 
-func (tp *topicProducer) closeTopic(topic Topic) {
-	tp.parent.queue.CloseTopic(topic)
+func (tp *topicProducer) closeTopic() {
+	tp.parent.queue.CloseTopic(tp.topic)
 }
