@@ -82,6 +82,7 @@ var _ = Describe("LmqSingleTopicWithSingleCp", func() {
 				}
 
 				time.Sleep(5 * time.Second)
+				aproducer.Close()
 
 				tc, err := consumer.ConsumeTopic(topicName, 0)
 				Expect(err).NotTo(HaveOccurred())
