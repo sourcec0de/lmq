@@ -72,20 +72,16 @@ func (p *asyncProducer) dispatch() {
 	handlers := make(map[string]chan<- *ProducerMessage)
 
 	for {
-		select {
-		case pMsg, ok := <-p.input:
-			if !ok {
-				goto exit
-			}
-			handler := handlers[pMsg.Topic]
-			if handler == nil {
-				handler = p.newTopicProducer(pMsg.Topic)
-				handlers[pMsg.Topic] = handler
-			}
-			handler <- pMsg
-		case <-p.exitChan:
+		pMsg, ok := <-p.input
+		if !ok {
 			goto exit
 		}
+		handler := handlers[pMsg.Topic]
+		if handler == nil {
+			handler = p.newTopicProducer(pMsg.Topic)
+			handlers[pMsg.Topic] = handler
+		}
+		handler <- pMsg
 	}
 
 exit:
