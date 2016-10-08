@@ -147,16 +147,12 @@ func (p *asyncProducer) shutdown() {
 
 func (tp *topicProducer) putMessage() {
 	for {
-		select {
-		case pMsg, ok := <-tp.input:
-			if !ok {
-				goto exit
-			}
-			msg := NewMessage(pMsg.Body)
-			tp.ppb.Put(msg)
-		case <-tp.parent.exitChan:
+		pMsg, ok := <-tp.input
+		if !ok {
 			goto exit
 		}
+		msg := NewMessage(pMsg.Body)
+		tp.ppb.Put(msg)
 	}
 exit:
 	tp.closeTopic(tp.topic)
