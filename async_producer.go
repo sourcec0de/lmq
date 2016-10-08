@@ -127,8 +127,8 @@ func (p *asyncProducer) newTopicProducer(topic string) chan<- *ProducerMessage {
 			p.queue.PutMessages(tp.topic, msgs)
 		})
 
-	p.waitGroup.Wrap(func() { tp.ppb.Flush() })
 	p.waitGroup.Wrap(func() { tp.putMessage() })
+	p.waitGroup.Wrap(func() { tp.flush() })
 
 	return input
 }
@@ -141,14 +141,7 @@ func (p *asyncProducer) shutdown() {
 	close(p.input)
 	close(p.exitChan)
 	p.waitGroup.Wait()
-	p.closeTopics()
 	p.queue.Close()
-}
-
-func (p *asyncProducer) closeTopics() {
-	for _, tp := range p.tps {
-		tp.closeTopic()
-	}
 }
 
 func (tp *topicProducer) putMessage() {
@@ -161,6 +154,11 @@ func (tp *topicProducer) putMessage() {
 		tp.ppb.Put(msg)
 	}
 exit:
+}
+
+func (tp *topicProducer) flush() {
+	tp.ppb.Flush()
+	tp.closeTopic()
 }
 
 func (tp *topicProducer) closeTopic() {
