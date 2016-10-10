@@ -1,5 +1,10 @@
 package lmq
 
+import (
+	"log"
+	"sync"
+)
+
 // Queue manages topics
 type Queue interface {
 	Option() *Options
@@ -11,15 +16,39 @@ type Queue interface {
 	Close()
 }
 
+var (
+	queueMap map[string]Queue
+	l        sync.Mutex
+)
+
+func init() {
+	queueMap = make(map[string]Queue)
+}
+
 type queue struct {
-	opt            *Options
+	opt *Options
+
+	rTopics map[string]Topic
+	wTopics map[string]Topic
+	sync.Mutex
+
 	backendStorage BackendStorage
 }
 
 // NewQueue creates a new Queue using the given option.
 func NewQueue(opt *Options) (Queue, error) {
-	q := &queue{
-		opt: opt,
+	l.Lock()
+	defer l.Unlock()
+
+	q, ok := queueMap[opt.DataPath]
+	if ok {
+		return q, nil
+	}
+
+	q = &queue{
+		opt:     opt,
+		rTopics: make(map[string]Topic),
+		wTopics: make(map[string]Topic),
 	}
 
 	var backendStorage BackendStorage
@@ -34,7 +63,7 @@ func NewQueue(opt *Options) (Queue, error) {
 		return nil, err
 	}
 
-	q.backendStorage = backendStorage
+	q.(*queue).backendStorage = backendStorage
 
 	return q, nil
 }
@@ -44,7 +73,32 @@ func (q *queue) Option() *Options {
 }
 
 func (q *queue) OpenTopic(topic, groupID string, flag int) Topic {
-	return q.backendStorage.OpenTopic(topic, groupID, flag)
+	q.Lock()
+	defer q.Unlock()
+
+	switch flag {
+	case 0:
+		if t, ok := q.wTopics[topic]; ok {
+			return t
+		}
+	case 1:
+		if t, ok := q.rTopics[topic]; ok {
+			return t
+		}
+	case 2:
+		break
+	default:
+		log.Fatalf("Open topic faild: unvaild %d flag", flag)
+	}
+
+	t := q.backendStorage.OpenTopic(topic, groupID, flag)
+	switch flag {
+	case 0:
+		q.wTopics[topic] = t
+	case 1:
+		q.rTopics[topic] = t
+	}
+	return t
 }
 
 func (q *queue) PutMessages(topic Topic, msgs []*Message) {
