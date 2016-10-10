@@ -38,21 +38,6 @@ type asyncProducer struct {
 	waitGroup WaitGroupWrapper
 }
 
-// NewAsyncProducer creates a new AsyncProducer using the given option.
-func NewAsyncProducer(opt *Options) (AsyncProducer, error) {
-	queue, err := NewQueue(opt)
-	if err != nil {
-		return nil, err
-	}
-
-	p, err := NewAsyncProducerWithQueue(queue)
-	if err != nil {
-		return nil, err
-	}
-
-	return p, nil
-}
-
 // NewAsyncProducerWithQueue creates a new Producer using the given client. It is still
 // necessary to call Close() on the underlying client when shutting down this producer.
 func NewAsyncProducerWithQueue(queue Queue) (AsyncProducer, error) {
@@ -137,12 +122,6 @@ func (tp *topicProducer) openTopic(topic string) Topic {
 	return tp.parent.queue.OpenTopic(topic, "", 0)
 }
 
-func (p *asyncProducer) shutdown() {
-	close(p.input)
-	close(p.exitChan)
-	p.waitGroup.Wait()
-}
-
 func (tp *topicProducer) putMessage() {
 	for {
 		pMsg, ok := <-tp.input
@@ -157,9 +136,10 @@ exit:
 
 func (tp *topicProducer) flush() {
 	tp.ppb.Flush()
-	tp.closeTopic()
 }
 
-func (tp *topicProducer) closeTopic() {
-	tp.parent.queue.CloseTopic(tp.topic)
+func (p *asyncProducer) shutdown() {
+	close(p.input)
+	close(p.exitChan)
+	p.waitGroup.Wait()
 }
