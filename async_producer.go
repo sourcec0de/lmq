@@ -141,7 +141,6 @@ func (p *asyncProducer) shutdown() {
 	close(p.input)
 	close(p.exitChan)
 	p.waitGroup.Wait()
-	p.queue.Close()
 }
 
 func (tp *topicProducer) putMessage() {
