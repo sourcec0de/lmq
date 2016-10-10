@@ -12,7 +12,6 @@ type Queue interface {
 	PutMessages(topic Topic, msgs []*Message)
 	ReadMessages(topic Topic, groupID string, msgs chan<- *[]byte)
 	Stat(topic Topic) *TopicStat
-	CloseTopic(topic Topic)
 	Close()
 }
 
@@ -113,10 +112,16 @@ func (q *queue) Stat(topic Topic) *TopicStat {
 	return q.backendStorage.Stat(topic)
 }
 
-func (q *queue) CloseTopic(topic Topic) {
-	q.backendStorage.CloseTopic(topic)
-}
-
 func (q *queue) Close() {
+	q.Lock()
+	defer q.Unlock()
+
+	for _, rt := range q.rTopics {
+		q.backendStorage.CloseTopic(rt)
+	}
+	for _, wt := range q.wTopics {
+		q.backendStorage.CloseTopic(wt)
+	}
+
 	q.backendStorage.Close()
 }
