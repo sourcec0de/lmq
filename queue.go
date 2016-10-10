@@ -65,6 +65,8 @@ func NewQueue(opt *Options) (Queue, error) {
 
 	q.(*queue).backendStorage = backendStorage
 
+	queueMap[opt.DataPath] = q
+
 	return q, nil
 }
 
@@ -81,24 +83,22 @@ func (q *queue) OpenTopic(topic, groupID string, flag int) Topic {
 		if t, ok := q.wTopics[topic]; ok {
 			return t
 		}
+		t := q.backendStorage.OpenTopic(topic, groupID, flag)
+		q.wTopics[topic] = t
+		return t
 	case 1:
 		if t, ok := q.rTopics[topic]; ok {
 			return t
 		}
+		t := q.backendStorage.OpenTopic(topic, groupID, flag)
+		q.rTopics[topic] = t
+		return t
 	case 2:
 		break
 	default:
 		log.Fatalf("Open topic faild: unvaild %d flag", flag)
 	}
-
-	t := q.backendStorage.OpenTopic(topic, groupID, flag)
-	switch flag {
-	case 0:
-		q.wTopics[topic] = t
-	case 1:
-		q.rTopics[topic] = t
-	}
-	return t
+	return nil
 }
 
 func (q *queue) PutMessages(topic Topic, msgs []*Message) {
