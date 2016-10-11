@@ -30,7 +30,7 @@ func (t *lmdbTopic) latestPartitionID(txn *lmdb.Txn) uint64 {
 
 	idBuf, _, err := cur.Get(nil, nil, lmdb.Last)
 	if err != nil {
-		log.Fatalln("In lastestPartitionMeta, cursor scan failed: ", err)
+		log.Fatalln("In lastestPartitionMeta, cursor consume failed: ", err)
 	}
 
 	return bytesToUInt64(idBuf)
@@ -44,7 +44,7 @@ func (t *lmdbTopic) latestPersistOffset(txn *lmdb.Txn) uint64 {
 
 	_, offsetBuf, err := cur.Get(nil, nil, lmdb.Last)
 	if err != nil {
-		log.Fatalln("In lastestPartitionMeta, cursor scan failed: ", err)
+		log.Fatalln("In lastestPartitionMeta, cursor consume failed: ", err)
 	}
 
 	return bytesToUInt64(offsetBuf)
@@ -263,8 +263,8 @@ func (t *lmdbTopic) consumePartitionID(txn *lmdb.Txn, groupID string, searchFrom
 }
 
 func (t *lmdbTopic) consumeOffset(txn *lmdb.Txn, groupID string) uint64 {
-	keyConsumserStr := fmt.Sprintf("%s_%s", "consumer_head", groupID)
-	offsetBuf, err := txn.Get(t.ownerMetaDB, []byte(keyConsumserStr))
+	keyConsumerStr := fmt.Sprintf("%s_%s", "consumer_head", groupID)
+	offsetBuf, err := txn.Get(t.ownerMetaDB, []byte(keyConsumerStr))
 	if err == nil {
 		offset := bytesToUInt64(offsetBuf)
 		return offset
@@ -283,7 +283,7 @@ func (t *lmdbTopic) consumeOffset(txn *lmdb.Txn, groupID string) uint64 {
 	return bytesToUInt64(offsetBuf)
 }
 
-func (t *lmdbTopic) scanPartition(groupID string, msgs chan<- *[]byte) (scanned int32, eof bool) {
+func (t *lmdbTopic) ConsumePartition(groupID string, msgs chan<- *[]byte) (consumed int32, eof bool) {
 	_ = t.queueEnv.Update(func(txn *lmdb.Txn) error {
 		defer t.rtxn.Reset()
 		if err := t.rtxn.Renew(); err != nil {
@@ -300,7 +300,7 @@ func (t *lmdbTopic) scanPartition(groupID string, msgs chan<- *[]byte) (scanned 
 		k, v, err := t.cursor.Get(uInt64ToBytes(cOffset), nil, lmdb.SetRange)
 		if err == nil {
 			var offset uint64
-			for ; err == nil && scanned < t.opt.FetchSize; scanned++ {
+			for ; err == nil && consumed < t.opt.FetchSize; consumed++ {
 				offset = bytesToUInt64(k)
 				msgs <- &v
 				k, v, err = t.cursor.Get(nil, nil, lmdb.Next)
@@ -311,7 +311,7 @@ func (t *lmdbTopic) scanPartition(groupID string, msgs chan<- *[]byte) (scanned 
 		} else {
 			if err != nil {
 				if !lmdb.IsNotFound(err) {
-					log.Println("Scan partition failed: ", err)
+					log.Println("Consume partition failed: ", err)
 				}
 				if cOffset < t.persistedOffset(txn) {
 					eof = true
@@ -320,7 +320,7 @@ func (t *lmdbTopic) scanPartition(groupID string, msgs chan<- *[]byte) (scanned 
 		}
 		return nil
 	})
-	return scanned, eof
+	return consumed, eof
 }
 
 func (t *lmdbTopic) updateConsumeOffset(txn *lmdb.Txn, groupID string, offset uint64) {
@@ -330,7 +330,7 @@ func (t *lmdbTopic) updateConsumeOffset(txn *lmdb.Txn, groupID string, offset ui
 	}
 }
 
-func (t *lmdbTopic) rotateScanPartition(groupID string) {
+func (t *lmdbTopic) rotateConsumePartition(groupID string) {
 	err := t.queueEnv.Update(func(txn *lmdb.Txn) error {
 		t.closePartition()
 		partitionID := t.choosePartitionForConsume(txn, groupID)
