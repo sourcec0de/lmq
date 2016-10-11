@@ -22,20 +22,7 @@ type consumer struct {
 	waitGroup WaitGroupWrapper
 }
 
-func NewConsumer(groupID string, opt *Options) (Consumer, error) {
-	queue, err := NewQueue(opt)
-	if err != nil {
-		return nil, err
-	}
-	c, err := NewConsumerWithQueue(groupID, queue)
-	if err != nil {
-		return nil, err
-	}
-
-	return c, nil
-}
-
-func NewConsumerWithQueue(groupID string, queue Queue) (Consumer, error) {
+func NewConsumer(groupID string, queue Queue) (Consumer, error) {
 	c := &consumer{
 		queue:    queue,
 		opt:      queue.Option(),
