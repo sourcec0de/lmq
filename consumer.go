@@ -88,6 +88,7 @@ func (tc *topicConsumer) readMessages() {
 	for {
 		select {
 		case <-tc.consumer.exitChan:
+			goto exit
 		case <-tc.exitChan:
 			goto exit
 		default:
