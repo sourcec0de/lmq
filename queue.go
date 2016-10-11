@@ -105,7 +105,7 @@ func (q *queue) PutMessages(topic Topic, msgs []*Message) {
 }
 
 func (q *queue) ReadMessages(topic Topic, groupID string, msgs chan<- *[]byte) {
-	q.backendStorage.ScanMessages(topic, groupID, msgs)
+	q.backendStorage.ConsumeMessages(topic, groupID, msgs)
 }
 
 func (q *queue) Stat(topic Topic) *TopicStat {
