@@ -117,7 +117,7 @@ var _ = Describe("LmqSingleTopicWithSingleCp", func() {
 
 				aproducer.Close()
 				consumer.Close()
-				// queue.Close()
+				queue.Close()
 			})
 		})
 	})

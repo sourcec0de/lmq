@@ -164,7 +164,11 @@ var _ = Describe("LmqSingleTopicWithParellelsCp", func() {
 			result:
 				Expect(totalConsumedCounts).To(Equal(msgsTotalCount * parallels))
 
-				// queue.Close()
+				for i := 0; i < parallels; i++ {
+					aproducers[i].Close()
+					consumers[i].Close()
+				}
+				queue.Close()
 
 				close(done)
 			}, 10000)
