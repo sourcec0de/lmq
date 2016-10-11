@@ -25,6 +25,9 @@ var _ = Describe("LmqSingleTopicWithParellelsCp", func() {
 		opt         *Options
 		topicOption TopicOption
 
+		queue Queue
+		qerr  error
+
 		msgsTotalCount int
 		msg            string
 
@@ -57,16 +60,27 @@ var _ = Describe("LmqSingleTopicWithParellelsCp", func() {
 		}
 		opt.Topics[topicName] = topicOption
 
-		msgsTotalCount = 5000
+		queue, qerr = NewQueue(opt)
+
+		msgsTotalCount = 2000
 		msg = "hello lmq with single topic with single cp"
 
 	})
 
 	JustBeforeEach(func() {
 		for i := 0; i < parallels; i++ {
-			aproducers[i], aperrs[i] = NewAsyncProducer(opt)
-			consumers[i], cerrs[i] = NewConsumer("single", opt)
+			aproducers[i], aperrs[i] = NewAsyncProducer(queue)
+			consumers[i], cerrs[i] = NewConsumer("single", queue)
 		}
+	})
+
+	Context("when the queue create successfully", func() {
+		It("queue should be a Queue object", func() {
+			Expect(reflect.TypeOf(queue).String()).To(Equal("*lmq.queue"))
+		})
+		It("qerr should be nil", func() {
+			Expect(qerr).NotTo(HaveOccurred())
+		})
 	})
 
 	Context("when the aproducer, consumer create succesfully", func() {
@@ -149,6 +163,8 @@ var _ = Describe("LmqSingleTopicWithParellelsCp", func() {
 				}
 			result:
 				Expect(totalConsumedCounts).To(Equal(msgsTotalCount * parallels))
+
+				// queue.Close()
 
 				close(done)
 			}, 10000)

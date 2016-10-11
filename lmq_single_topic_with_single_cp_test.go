@@ -23,6 +23,9 @@ var _ = Describe("LmqSingleTopicWithSingleCp", func() {
 		opt         *Options
 		topicOption TopicOption
 
+		queue Queue
+		qerr  error
+
 		msgsTotalCount int
 		msg            string
 	)
@@ -45,13 +48,24 @@ var _ = Describe("LmqSingleTopicWithSingleCp", func() {
 		}
 		opt.Topics[topicName] = topicOption
 
-		msgsTotalCount = 50000
+		queue, qerr = NewQueue(opt)
+
+		msgsTotalCount = 8000
 		msg = "hello lmq with single topic with single cp"
 	})
 
 	JustBeforeEach(func() {
-		aproducer, aperr = NewAsyncProducer(opt)
-		consumer, cerr = NewConsumer("single", opt)
+		aproducer, aperr = NewAsyncProducer(queue)
+		consumer, cerr = NewConsumer("single", queue)
+	})
+
+	Context("when the queue create successfully", func() {
+		It("queue should be a Queue object", func() {
+			Expect(reflect.TypeOf(queue).String()).To(Equal("*lmq.queue"))
+		})
+		It("qerr should be nil", func() {
+			Expect(qerr).NotTo(HaveOccurred())
+		})
 	})
 
 	Context("when the aproducer, consumer create succesfully", func() {
@@ -100,6 +114,8 @@ var _ = Describe("LmqSingleTopicWithSingleCp", func() {
 				}
 			result:
 				Expect(consumedCount).To(Equal(msgsTotalCount))
+
+				// queue.Close()
 			})
 		})
 	})
