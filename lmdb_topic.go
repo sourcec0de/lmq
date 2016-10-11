@@ -83,7 +83,7 @@ func (t *lmdbTopic) loadMeta(txn *lmdb.Txn) {
 	}
 }
 
-func (t *lmdbTopic) openPartitionForPersist() {
+func (t *lmdbTopic) OpenPartitionForPersist() {
 	err := t.queueEnv.Update(func(txn *lmdb.Txn) error {
 		partitionID := t.choosePartitionForPersist(txn, false)
 		t.partitionID = partitionID
@@ -94,7 +94,7 @@ func (t *lmdbTopic) openPartitionForPersist() {
 	}
 }
 
-func (t *lmdbTopic) persistMessages(msgs []*Message) {
+func (t *lmdbTopic) PersistMessages(msgs []*Message) {
 	isFull := false
 	_ = t.queueEnv.Update(func(txn *lmdb.Txn) error {
 		offset := t.persistedOffset(txn)
@@ -109,11 +109,11 @@ func (t *lmdbTopic) persistMessages(msgs []*Message) {
 	})
 	if isFull {
 		t.rotatePersistPartition()
-		t.persistMessages(msgs)
+		t.PersistMessages(msgs)
 	}
 }
 
-func (t *lmdbTopic) openPartitionForConsume(groupID string) {
+func (t *lmdbTopic) OpenPartitionForConsume(groupID string) {
 	err := t.queueEnv.Update(func(txn *lmdb.Txn) error {
 		partitionID := t.choosePartitionForConsume(txn, groupID)
 		return t.openConsumePartitionDB(partitionID)
@@ -123,13 +123,13 @@ func (t *lmdbTopic) openPartitionForConsume(groupID string) {
 	}
 }
 
-func (t *lmdbTopic) scanMessages(groupID string, msgs chan<- *[]byte) {
-	fetchSize, eof := t.scanPartition(groupID, msgs)
+func (t *lmdbTopic) ConsumeMessages(groupID string, msgs chan<- *[]byte) {
+	fetchSize, eof := t.ConsumePartition(groupID, msgs)
 	if (fetchSize == t.opt.FetchSize) || eof {
 		runtime.Gosched()
 	}
 	if eof {
-		t.rotateScanPartition(groupID)
+		t.rotateConsumePartition(groupID)
 	}
 }
 
@@ -143,7 +143,7 @@ func (t *lmdbTopic) close() {
 
 type TopicStat struct {
 	PersistedOffset uint64
-	ScanOffset      map[string]uint64
+	ConsumeOffset   map[string]uint64
 }
 
 func (t *lmdbTopic) stat() *TopicStat {
@@ -161,7 +161,7 @@ func (t *lmdbTopic) stat() *TopicStat {
 		for err == nil && t.checkConsumerKeyPrefix(string(consumerBuf)) {
 			consumer := string(consumerBuf)
 			name := strings.TrimPrefix(consumer, "consumer_head_")
-			ts.ScanOffset[name] = bytesToUInt64(offsetBuf)
+			ts.ConsumeOffset[name] = bytesToUInt64(offsetBuf)
 			consumerBuf, offsetBuf, err = cursor.Get(nil, nil, lmdb.Next)
 		}
 		return nil
