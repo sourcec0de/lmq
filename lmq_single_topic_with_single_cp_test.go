@@ -115,6 +115,8 @@ var _ = Describe("LmqSingleTopicWithSingleCp", func() {
 			result:
 				Expect(consumedCount).To(Equal(msgsTotalCount))
 
+				aproducer.Close()
+				consumer.Close()
 				// queue.Close()
 			})
 		})
