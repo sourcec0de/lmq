@@ -53,9 +53,9 @@ func (lbs *lmdbBackendStorage) OpenTopic(topic, groupID string, flag int) Topic 
 
 	switch flag {
 	case 0:
-		t.openPartitionForPersist()
+		t.OpenPartitionForPersist()
 	case 1:
-		t.openPartitionForConsume(groupID)
+		t.OpenPartitionForConsume(groupID)
 	case 2:
 		break
 	default:
@@ -66,11 +66,11 @@ func (lbs *lmdbBackendStorage) OpenTopic(topic, groupID string, flag int) Topic 
 }
 
 func (lbs *lmdbBackendStorage) PersistMessages(topic Topic, msgs []*Message) {
-	topic.(*lmdbTopic).persistMessages(msgs)
+	topic.(*lmdbTopic).PersistMessages(msgs)
 }
 
-func (lbs *lmdbBackendStorage) ScanMessages(topic Topic, groupID string, msgs chan<- *[]byte) {
-	topic.(*lmdbTopic).scanMessages(groupID, msgs)
+func (lbs *lmdbBackendStorage) ConsumeMessages(topic Topic, groupID string, msgs chan<- *[]byte) {
+	topic.(*lmdbTopic).ConsumeMessages(groupID, msgs)
 }
 
 func (lbs *lmdbBackendStorage) readerCheck() {
