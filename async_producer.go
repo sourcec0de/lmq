@@ -38,9 +38,9 @@ type asyncProducer struct {
 	waitGroup WaitGroupWrapper
 }
 
-// NewAsyncProducerWithQueue creates a new Producer using the given client. It is still
+// NewAsyncProducer creates a new Producer using the given client. It is still
 // necessary to call Close() on the underlying client when shutting down this producer.
-func NewAsyncProducerWithQueue(queue Queue) (AsyncProducer, error) {
+func NewAsyncProducer(queue Queue) (AsyncProducer, error) {
 	p := &asyncProducer{
 		queue:    queue,
 		opt:      queue.Option(),
